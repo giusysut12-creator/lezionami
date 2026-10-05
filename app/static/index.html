@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lezionami · Trascrizione in tre PDF</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <img src="/static/favicon.svg" alt="" width="30" height="30">
+        <div>
+          <strong>Lezionami</strong>
+          <span>Da trascrizione a lezione, guida e brochure</span>
+        </div>
+      </div>
+      <span class="model-chip" id="modelChip" hidden></span>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="banner banner-warn" id="keyBanner" hidden>
+      <strong>Chiave API non configurata.</strong>
+      Copia il file <code>.env.example</code> in <code>.env</code>, inserisci la tua <code>ANTHROPIC_API_KEY</code> e riavvia l'applicazione. Senza chiave l'elaborazione non può partire.
+    </div>
+
+    <section class="intro">
+      <h1>Trasforma una trascrizione in tre PDF</h1>
+      <p>Carica la trascrizione di una lezione o di un webinar: otterrai una <b>lezione completa</b>, una <b>guida di studio</b> e una <b>brochure per il cliente</b>, coerenti tra loro.</p>
+    </section>
+
+    <form id="jobForm" novalidate>
+      <!-- 1. Trascrizione -->
+      <section class="card">
+        <div class="card-head"><span class="step">1</span><h2>Trascrizione</h2></div>
+        <div class="tabs" role="tablist">
+          <button type="button" class="tab active" data-tab="file" role="tab" aria-selected="true">Carica file</button>
+          <button type="button" class="tab" data-tab="text" role="tab" aria-selected="false">Incolla testo</button>
+        </div>
+        <div class="tab-panel" id="panel-file">
+          <label class="dropzone" id="dropzone" for="transcriptFile">
+            <input type="file" id="transcriptFile" name="transcript_file" accept=".txt,.docx,.pdf,.md,.srt,.vtt">
+            <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 16V4m0 0-4 4m4-4 4 4M5 15v3a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            <span class="dz-main">Trascina qui il file o <u>sfoglia</u></span>
+            <span class="dz-sub">TXT, DOCX o PDF testuale · max <span class="maxmb">30</span> MB</span>
+            <span class="dz-file" id="transcriptName" hidden></span>
+          </label>
+        </div>
+        <div class="tab-panel" id="panel-text" hidden>
+          <textarea id="transcriptText" name="transcript_text" rows="9" placeholder="Incolla qui il testo della trascrizione…"></textarea>
+          <div class="hint" id="charCount">0 caratteri</div>
+        </div>
+      </section>
+
+      <!-- 2. Dettagli -->
+      <section class="card">
+        <div class="card-head"><span class="step">2</span><h2>Dettagli <small>facoltativi</small></h2></div>
+        <div class="grid">
+          <label class="field">
+            <span>Titolo della lezione</span>
+            <input type="text" name="title" maxlength="150" placeholder="Es. Destinazione Domani">
+          </label>
+          <label class="field">
+            <span>Data della lezione</span>
+            <input type="text" name="lesson_date" maxlength="60" placeholder="Es. 21 maggio 2026">
+          </label>
+          <label class="field field-wide">
+            <span>Destinatario della brochure</span>
+            <input type="text" name="recipient" maxlength="200" placeholder="Es. famiglie che vogliono risparmiare per i figli">
+          </label>
+        </div>
+        <p class="hint">Se lasci vuoti titolo e data, vengono ricavati dalla trascrizione quando presenti.</p>
+      </section>
+
+      <!-- 3. Fonti aggiuntive -->
+      <section class="card">
+        <div class="card-head"><span class="step">3</span><h2>Fonti ufficiali <small>facoltative</small></h2></div>
+        <p class="muted">KID, prospetti, condizioni contrattuali o schede prodotto. Vengono usate come fonti aggiuntive, distinte da quanto detto nella lezione, con titolo, data e pagina quando disponibili.</p>
+        <label class="file-btn">
+          <input type="file" id="sourceFiles" accept=".txt,.docx,.pdf,.md" multiple>
+          <span>+ Aggiungi documenti</span>
+        </label>
+        <ul class="file-list" id="sourceList"></ul>
+
+        <div class="toggle-row">
+          <label class="switch">
+            <input type="checkbox" id="webSearch" name="web_search">
+            <span class="slider" aria-hidden="true"></span>
+          </label>
+          <div>
+            <label for="webSearch"><b>Verifica su fonti ufficiali online</b></label>
+            <p class="muted small">Disattivata di norma. Se attiva, l'AI consulta solo siti ufficiali (compagnia, autorità di vigilanza) e i documenti indicano quali pagine sono state lette e quando. Se la ricerca non riesce, nulla viene dichiarato verificato. Può aumentare tempi e costi.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="privacy">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+        <p><b>Privacy.</b> Il testo e i documenti caricati vengono inviati ad Anthropic (fornitore dell'AI Claude) per l'elaborazione. L'applicazione non li salva su disco: restano in memoria solo per il tempo necessario (al massimo <span id="ttl">120</span> minuti) e puoi eliminarli subito al termine. Evita di caricare dati personali non necessari.</p>
+      </section>
+
+      <div class="actions">
+        <button type="submit" class="btn btn-primary" id="submitBtn">Genera i tre PDF</button>
+        <p class="form-error" id="formError" role="alert" hidden></p>
+      </div>
+    </form>
+
+    <!-- Avanzamento -->
+    <section class="card" id="progressCard" hidden>
+      <div class="card-head"><span class="step step-live" id="progressStep">•</span><h2 id="progressTitle">Elaborazione in corso</h2></div>
+      <div class="progress" aria-label="Avanzamento"><div class="progress-bar" id="progressBar"></div></div>
+      <div class="progress-meta"><span id="progressPct">0%</span><span class="muted" id="progressNote">Le lezioni lunghe possono richiedere diversi minuti.</span></div>
+      <ol class="phases" id="phaseList"></ol>
+      <div class="banner banner-error" id="errorBox" hidden>
+        <div><strong id="errorTitle">Si è verificato un errore</strong><p id="errorMsg"></p></div>
+        <div class="error-actions">
+          <button type="button" class="btn btn-primary" id="retryBtn">Riprova</button>
+          <button type="button" class="btn btn-ghost" id="restartBtn">Nuova elaborazione</button>
+        </div>
+      </div>
+      <ul class="warnings" id="warningList"></ul>
+    </section>
+
+    <!-- Risultati -->
+    <section class="card" id="resultCard" hidden>
+      <div class="card-head"><span class="step step-done">✓</span><h2>Documenti pronti</h2></div>
+      <div class="downloads" id="downloads"></div>
+      <div class="zip-row">
+        <a class="btn btn-primary" id="zipLink" href="#">Scarica tutto (ZIP)</a>
+        <a class="btn btn-ghost" id="reportLink" href="#">Report di verifica</a>
+      </div>
+      <details class="checks" id="checksBox">
+        <summary>Controlli eseguiti e punti da verificare</summary>
+        <div id="checksContent"></div>
+      </details>
+      <div class="end-actions">
+        <button type="button" class="btn btn-ghost" id="newBtn">Nuova elaborazione</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn">Elimina i dati dal server</button>
+      </div>
+    </section>
+  </main>
+
+  <footer class="wrap footer">
+    I documenti generati sono strumenti di studio e informazione: verifica sempre le condizioni sulla documentazione ufficiale applicabile.
+  </footer>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>

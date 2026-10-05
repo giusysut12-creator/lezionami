@@ -1,0 +1,7 @@
+anthropic>=1.11.0,<2
+fastapi>=0.115
+uvicorn>=0.30
+python-multipart>=0.0.9
+reportlab>=4.2
+pypdf>=5.0
+python-docx>=1.1
