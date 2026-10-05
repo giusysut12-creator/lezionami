@@ -17,7 +17,10 @@
           <span>Da trascrizione a lezione, guida e brochure</span>
         </div>
       </div>
-      <span class="model-chip" id="modelChip" hidden></span>
+      <div class="top-actions">
+        <span class="model-chip" id="modelChip" hidden></span>
+        <button type="button" class="logout" id="logoutBtn" hidden>Esci</button>
+      </div>
     </div>
   </header>
 
@@ -99,7 +102,7 @@
 
       <section class="privacy">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <p><b>Privacy.</b> Il testo e i documenti caricati vengono inviati ad Anthropic (fornitore dell'AI Claude) per l'elaborazione. L'applicazione non li salva su disco: restano in memoria solo per il tempo necessario (al massimo <span id="ttl">120</span> minuti) e puoi eliminarli subito al termine. Evita di caricare dati personali non necessari.</p>
+        <p><b>Privacy.</b> Il testo e i documenti caricati vengono inviati <span id="serverNote">al server dell'applicazione e </span>ad Anthropic (fornitore dell'AI Claude) solo per l'elaborazione. Il server non conserva nulla: trascrizione, risultati intermedi e PDF restano soltanto in questa pagina del tuo browser e spariscono quando la chiudi o premi «Cancella i dati». Evita di caricare dati personali non necessari.</p>
       </section>
 
       <div class="actions">
@@ -112,7 +115,7 @@
     <section class="card" id="progressCard" hidden>
       <div class="card-head"><span class="step step-live" id="progressStep">•</span><h2 id="progressTitle">Elaborazione in corso</h2></div>
       <div class="progress" aria-label="Avanzamento"><div class="progress-bar" id="progressBar"></div></div>
-      <div class="progress-meta"><span id="progressPct">0%</span><span class="muted" id="progressNote">Le lezioni lunghe possono richiedere diversi minuti.</span></div>
+      <div class="progress-meta"><span id="progressPct">0%</span><span class="muted" id="progressNote">Non chiudere né ricaricare la pagina durante l'elaborazione.</span></div>
       <ol class="phases" id="phaseList"></ol>
       <div class="banner banner-error" id="errorBox" hidden>
         <div><strong id="errorTitle">Si è verificato un errore</strong><p id="errorMsg"></p></div>
@@ -138,7 +141,7 @@
       </details>
       <div class="end-actions">
         <button type="button" class="btn btn-ghost" id="newBtn">Nuova elaborazione</button>
-        <button type="button" class="btn btn-danger" id="deleteBtn">Elimina i dati dal server</button>
+        <button type="button" class="btn btn-danger" id="deleteBtn">Cancella i dati dalla pagina</button>
       </div>
     </section>
   </main>

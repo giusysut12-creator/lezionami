@@ -148,3 +148,12 @@ CHECK_SCHEMA = _obj({
     "argomenti_non_coperti": STR_LIST,
     "note": STR,
 })
+
+CROSSCHECK_SCHEMA = _obj({
+    "titolo_proposto": STR,
+    "tema_generale": STR,
+    "data_lezione_rilevata": STR,
+    "criticita": INVENTORY_SCHEMA["properties"]["criticita"],
+    "argomenti_duplicati": {"type": "array", "items": STR_LIST,
+                            "description": "Gruppi di id di argomenti che trattano lo stesso tema."},
+})

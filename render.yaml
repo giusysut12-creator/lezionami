@@ -1,0 +1,29 @@
+# Configurazione per Render (https://render.com): New → Blueprint → seleziona questo repository.
+# I valori segreti (ANTHROPIC_API_KEY, APP_PASSWORD) vengono chiesti da Render alla creazione.
+services:
+  - type: web
+    name: lezionami
+    runtime: python
+    # starter: sempre attivo (circa 7 $/mese); "free" funziona ma il server si spegne dopo
+    # 15 minuti senza visite e la prima richiesta successiva è lenta.
+    plan: starter
+    region: frankfurt
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips '*' --no-access-log
+    healthCheckPath: /healthz
+    autoDeploy: true
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: HOST
+        value: 0.0.0.0
+      - key: ANTHROPIC_API_KEY
+        sync: false
+      - key: APP_PASSWORD
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: CLAUDE_MODEL
+        value: claude-opus-5-5
+      - key: CLAUDE_EFFORT
+        value: high

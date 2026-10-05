@@ -103,8 +103,21 @@ def inventory_response(text: str) -> dict:
     }
 
 
+def crosscheck_response(text: str) -> dict:
+    merged = _tag_json(text, "inventario_unito") or {}
+    ids = [t["id"] for t in merged.get("argomenti", [])]
+    return {"titolo_proposto": "Prodotto di prova", "tema_generale": TEST_MARK, "data_lezione_rilevata": "",
+            "criticita": [{"tipo": "contraddizione", "descrizione": f"{TEST_MARK} discordanza tra segmenti",
+                           "riferimenti": []}],
+            "argomenti_duplicati": [ids[:2]] if len(ids) > 3 else []}
+
+
 def document_response(text: str) -> dict:
     inventory = _tag_json(text, "inventario") or {}
+    assigned = re.search(r"SOLO questi argomenti dell'inventario, in modo completo: (.*)", text)
+    if assigned:  # lezione scritta a parti: solo gli argomenti assegnati
+        wanted = set(re.findall(r"\b(A\d+)\b", assigned.group(1).split("; inoltre")[0]))
+        inventory = {**inventory, "argomenti": [t for t in inventory.get("argomenti", []) if t["id"] in wanted]}
     revision = "Compito: revisione del documento" in text
     if "«Lezione completa»" in text:
         kind = "lezione"
@@ -188,7 +201,9 @@ class Handler(BaseHTTPRequestHandler):
             blocks = web_blocks()
         else:
             schema = (((body.get("output_config") or {}).get("format") or {}).get("schema") or {}).get("properties", {})
-            if "argomenti" in schema:
+            if "argomenti_duplicati" in schema:
+                payload = crosscheck_response(user)
+            elif "argomenti" in schema:
                 payload = inventory_response(user)
             elif "sections" in schema:
                 payload = document_response(user)

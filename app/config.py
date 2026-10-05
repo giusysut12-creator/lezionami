@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import os
 from dataclasses import dataclass
 from pathlib import Path
@@ -65,17 +66,28 @@ class Settings:
     host: str
     port: int
     max_upload_mb: int
-    job_ttl_minutes: int
     single_pass_max_chars: int
     segment_max_chars: int
     lesson_source_max_chars: int
     parallel_requests: int
+    lesson_part_topics: int
     show_source_refs: bool
     price_input: float | None
     price_output: float | None
+    app_password: str
+    session_secret: str
+    session_hours: int
+    public_mode: bool
+    on_vercel: bool
+
+    @property
+    def auth_enabled(self) -> bool:
+        return bool(self.app_password)
 
 
 def get_settings() -> Settings:
+    on_vercel = bool(os.environ.get("VERCEL"))
+    app_password = os.environ.get("APP_PASSWORD", "")
     model = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5").strip() or "claude-opus-5-5"
     price_in, price_out = KNOWN_PRICES.get(model, (None, None))
     if os.environ.get("PRICE_INPUT_PER_MTOK"):
@@ -95,13 +107,30 @@ def get_settings() -> Settings:
         web_search_max_uses=_int("WEB_SEARCH_MAX_USES", 8),
         host=os.environ.get("HOST", "127.0.0.1"),
         port=_int("PORT", 8000),
-        max_upload_mb=_int("MAX_UPLOAD_MB", 30),
-        job_ttl_minutes=_int("JOB_TTL_MINUTES", 120),
-        single_pass_max_chars=_int("SINGLE_PASS_MAX_CHARS", 60000),
-        segment_max_chars=_int("SEGMENT_MAX_CHARS", 40000),
+        # Su Vercel richiesta e risposta di una funzione non possono superare 4,5 MB.
+        max_upload_mb=_int("MAX_UPLOAD_MB", 4 if on_vercel else 30),
+        # Soglie pensate perché ogni chiamata resti entro il tempo massimo di una funzione serverless.
+        single_pass_max_chars=_int("SINGLE_PASS_MAX_CHARS", 30000),
+        segment_max_chars=_int("SEGMENT_MAX_CHARS", 25000),
         lesson_source_max_chars=_int("LESSON_SOURCE_MAX_CHARS", 600000),
         parallel_requests=max(1, _int("PARALLEL_REQUESTS", 3)),
+        lesson_part_topics=max(2, _int("LESSON_PART_TOPICS", 4)),
         show_source_refs=_bool("SHOW_SOURCE_REFS", True),
         price_input=price_in,
         price_output=price_out,
+        app_password=app_password,
+        session_secret=os.environ.get("SESSION_SECRET", "") or _derived_secret(app_password),
+        session_hours=max(1, _int("SESSION_HOURS", 12)),
+        # Online (Vercel, Render o HOST diverso da localhost) l'app richiede una password.
+        public_mode=on_vercel or bool(os.environ.get("RENDER"))
+        or os.environ.get("HOST", "127.0.0.1").strip() not in ("127.0.0.1", "localhost", "::1"),
+        on_vercel=on_vercel,
     )
+
+
+def _derived_secret(app_password: str) -> str:
+    """Chiave di firma stabile tra le istanze serverless, se SESSION_SECRET non è impostata."""
+    if not app_password:
+        return ""
+    material = f"lezionami|{app_password}|{os.environ.get('ANTHROPIC_API_KEY', '')}"
+    return hashlib.sha256(material.encode()).hexdigest()

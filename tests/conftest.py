@@ -26,8 +26,6 @@ def mock_api():
     server = mock_claude.start()
     os.environ["ANTHROPIC_BASE_URL"] = f"http://127.0.0.1:{server.server_address[1]}"
     os.environ["ANTHROPIC_API_KEY"] = "chiave-finta-per-test"
-    os.environ["SINGLE_PASS_MAX_CHARS"] = "60000"
-    os.environ["SEGMENT_MAX_CHARS"] = "40000"
     yield server
     server.shutdown()
 

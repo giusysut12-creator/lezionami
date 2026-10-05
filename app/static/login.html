@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Accesso · Lezionami</title>
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="wrap topbar-inner">
+      <div class="brand">
+        <img src="/static/favicon.svg" alt="" width="30" height="30">
+        <div>
+          <strong>Lezionami</strong>
+          <span>Da trascrizione a lezione, guida e brochure</span>
+        </div>
+      </div>
+    </div>
+  </header>
+  <main class="wrap login-wrap">
+    <form class="card login-card" id="loginForm">
+      <div class="card-head"><span class="step">🔒</span><h2>Accesso riservato</h2></div>
+      <p class="muted">Inserisci la password per usare l'applicazione.</p>
+      <label class="field">
+        <span>Password</span>
+        <input type="password" name="password" id="password" autocomplete="current-password" required autofocus>
+      </label>
+      <button type="submit" class="btn btn-primary login-btn" id="loginBtn">Entra</button>
+      <p class="form-error" id="loginError" role="alert" hidden></p>
+    </form>
+  </main>
+  <script src="/static/login.js"></script>
+</body>
+</html>

@@ -176,3 +176,14 @@ textarea:focus, input[type=text]:focus { outline: none; border-color: var(--acce
   .model-chip { display: none; }
   .end-actions .btn { flex: 1 1 100%; }
 }
+
+/* Accesso */
+.login-wrap { padding-top: 40px; }
+.login-card { max-width: 420px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px; }
+.login-card .muted { margin: 0; }
+.login-card input[type=password] { width: 100%; font: inherit; font-size: 15px; border: 1px solid #D6D4EA; border-radius: 10px; padding: 10px 12px; }
+.login-card input[type=password]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(121, 117, 228, .2); }
+.login-btn { width: 100%; }
+.top-actions { display: flex; align-items: center; gap: 8px; }
+.logout { border: 1px solid #CFCDF2; background: #fff; color: var(--accent-dark); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; cursor: pointer; }
+.logout:hover { background: var(--accent-faint); }

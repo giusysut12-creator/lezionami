@@ -116,7 +116,7 @@ def test_long_segmentation_keeps_final_part():
     text = (FIXTURES / "lunga.txt").read_text(encoding="utf-8")
     doc = from_pasted_text(text)
     build_transcript_passages(doc)
-    segments = segment_passages(doc.passages, 40000)
+    segments = segment_passages(doc.passages, 25000)
     assert len(segments) >= 4
     covered = {p.id for segment in segments for p in segment}
     assert covered == {p.id for p in doc.passages}

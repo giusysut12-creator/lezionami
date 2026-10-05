@@ -1,0 +1,11 @@
+.env
+.venv
+venv
+tests
+output
+__pycache__
+*.pyc
+Dockerfile
+render.yaml
+avvia.sh
+avvia_windows.bat

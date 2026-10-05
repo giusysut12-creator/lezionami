@@ -9,13 +9,16 @@ Utile per le prove reali con la chiave API: salva i tre PDF, lo ZIP e il report.
 from __future__ import annotations
 
 import argparse
+import base64
 import sys
-import time
+import zipfile
 from pathlib import Path
 
 from app.config import get_settings, load_dotenv
-from app.pdf_render import file_name
-from app.pipeline import DOC_KINDS, JobStore, Upload
+from app.extract import ExtractionError
+from app.llm import LLMError
+from app.orchestrator import StepFailed, run_all
+from app.steps import StepError, Steps, estimated_cost, extract_inputs
 
 
 def main() -> int:
@@ -31,42 +34,54 @@ def main() -> int:
 
     load_dotenv()
     settings = get_settings()
-    store = JobStore()
-    job = store.create(
-        settings=settings, title=args.titolo, lesson_date=args.data, recipient=args.destinatario,
-        web_search=args.web,
-        transcript_upload=Upload(args.trascrizione.name, args.trascrizione.read_bytes()),
-        pasted_text="", source_uploads=[Upload(p.name, p.read_bytes()) for p in args.fonte],
-    )
     print(f"Modello: {settings.model}")
-    store.start(job)
-    shown: dict[str, str] = {}
-    while job.thread.is_alive():
-        for phase in job.phases:
-            line = f"{phase.status}: {phase.detail}"
-            if phase.status != "attesa" and shown.get(phase.key) != line:
-                shown[phase.key] = line
-                print(f"  [{phase.status:>12}] {phase.label} — {phase.detail}")
-        time.sleep(0.5)
-    for phase in job.phases:
-        line = f"{phase.status}: {phase.detail}"
-        if shown.get(phase.key) != line and phase.status != "attesa":
-            print(f"  [{phase.status:>12}] {phase.label} — {phase.detail}")
-    for warning in job.warnings:
-        print(f"  Avviso: {warning}")
-    if job.status != "completato":
-        print(f"\nERRORE: {job.error['message']}")
+    try:
+        state = extract_inputs(
+            settings, (args.trascrizione.name, args.trascrizione.read_bytes()), "",
+            [(p.name, p.read_bytes()) for p in args.fonte],
+            {"title": args.titolo, "lesson_date": args.data, "recipient": args.destinatario, "web_search": args.web},
+        )
+    except ExtractionError as exc:
+        print(f"ERRORE: {exc}")
         return 1
+    print(f"  [estrazione] {state['detail']}")
+    for warning in state["warnings"]:
+        print(f"  Avviso: {warning}")
+
+    def call(step: str, step_args: dict, snapshot: dict) -> dict:
+        try:
+            return Steps(settings, snapshot).run(step, step_args)
+        except LLMError as exc:
+            raise StepFailed(step, exc.user_message, exc.retryable) from exc
+        except StepError as exc:
+            raise StepFailed(step, exc.message, exc.retryable) from exc
+
+    try:
+        run_all(call, state, on_event=lambda phase, detail: print(f"  [{phase}] {detail}"),
+                parallel=settings.parallel_requests)
+    except StepFailed as exc:
+        print(f"\nERRORE nel passo «{exc.step}»: {exc.detail}")
+        return 1
+
+    final = state["final"]
     args.uscita.mkdir(parents=True, exist_ok=True)
-    for kind in DOC_KINDS:
-        target = args.uscita / file_name(kind, job.final_title)
-        target.write_bytes(job.pdfs[kind])
-        print(f"Salvato: {target} ({job.pdf_pages[kind]} pagine)")
-    suffix = file_name("lezione", job.final_title)[len("Lezione_completa_"):-4]
-    (args.uscita / f"Documenti_{suffix}.zip").write_bytes(job.zip_bytes)
-    (args.uscita / f"Report_verifica_{suffix}.txt").write_text(job.report_text, encoding="utf-8")
-    cost = job.usage.estimated_cost(settings.price_input, settings.price_output)
-    print(f"Chiamate API: {job.usage.calls}" + (f" · costo stimato circa {cost:.2f} USD" if cost is not None else ""))
+    zip_path = args.uscita / final["zip_name"]
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
+        for item in final["files"]:
+            data = base64.b64decode(item["b64"])
+            (args.uscita / item["filename"]).write_bytes(data)
+            archive.writestr(item["filename"], data)
+            print(f"Salvato: {args.uscita / item['filename']} ({item['pages']} pagine)")
+        archive.writestr(final["report"]["filename"], final["report"]["text"])
+    (args.uscita / final["report"]["filename"]).write_text(final["report"]["text"], encoding="utf-8")
+    print(f"Salvato: {zip_path}")
+    for warning in final["warnings"]:
+        print(f"  Avviso: {warning}")
+    for issue in final["issues"]:
+        print(f"  Da verificare [{issue['gravita']}] {issue['documento']}: {issue['problema']}")
+    usage = state.get("usage", {})
+    cost = estimated_cost(usage, settings)
+    print(f"Chiamate API: {usage.get('chiamate', 0)}" + (f" · costo stimato circa {cost:.2f} USD" if cost is not None else ""))
     return 0
 
 

@@ -72,13 +72,12 @@ Non riassumere in modo da perdere condizioni o numeri. Non inventare. Ogni eleme
 
 SEGMENT_NOTE = """Stai analizzando il segmento {index} di {total} della trascrizione (passaggi da {first} a {last}). Inventaria solo ciò che compare in questo segmento; il primo passaggio può ripetere l'ultimo del segmento precedente. Se il segmento termina a metà frase non completarla: sarà analizzata nel segmento successivo. Usa identificativi con prefisso S{index}- (per esempio S{index}-A1, S{index}-E1)."""
 
-CONSOLIDATION_TASK = """## Compito: consolidamento degli inventari
-Ricevi gli inventari parziali dei segmenti consecutivi di una stessa trascrizione. Uniscili in un unico inventario completo:
-- mantieni ogni argomento, numero, condizione, eccezione, domanda e criticità: non eliminare elementi dei segmenti finali;
-- unisci soltanto i duplicati veri (stessa informazione ripetuta nel passaggio di sovrapposizione o ripresa dal relatore), conservando tutti i riferimenti;
-- se due segmenti riportano versioni diverse dello stesso dato, non sceglierne una: registra una criticità di tipo «contraddizione»;
-- se un argomento iniziato in un segmento prosegue nel successivo, uniscilo in un solo argomento;
-- rinumera gli identificativi (A1, A2... ed E1, E2...) e aggiorna argomento_id."""
+CROSSCHECK_TASK = """## Compito: controllo incrociato dei segmenti
+Ricevi l'inventario ottenuto unendo meccanicamente gli inventari di segmenti consecutivi della stessa trascrizione (e degli eventuali documenti allegati). Non riscriverlo. Restituisci soltanto:
+- le criticità che emergono confrontando segmenti diversi: lo stesso dato riportato con valori diversi, condizioni che si contraddicono, domande poste in un segmento e risolte (o lasciate aperte) in un altro, discordanze tra trascrizione e documenti. Riporta entrambe le versioni senza sceglierne una;
+- i gruppi di argomenti che sono in realtà lo stesso tema ripreso in più segmenti (elenca i loro id);
+- titolo proposto, tema generale e data della lezione se esplicita.
+Non inventare criticità: se non ce ne sono, restituisci liste vuote."""
 
 LESSON_TASK = """## Compito: «Lezione completa»
 Scrivi la lezione completa a partire dall'inventario e dalla fonte. È un documento didattico strutturato per chi deve capire a fondo l'argomento (per esempio consulenti in formazione).
@@ -97,6 +96,15 @@ Deve:
 - chiudere con una sezione di uso pratico/correzioni da ricordare e una sezione «Fonti e limiti» che elenca la trascrizione (con eventuale interruzione) e i documenti usati.
 
 Non deve essere una trascrizione ripulita né un riassunto breve: la lunghezza si adatta alla quantità di contenuto. Prediligi paragrafi ben costruiti, di 3-6 frasi, alternati a tabelle ed elenchi quando servono. Usa da 5 a 12 sezioni con titoli chiari; usa «subheading» per i sottotemi. Riporta nei campi refs dei blocchi gli identificativi dei passaggi su cui si basano."""
+
+LESSON_PART_NOTE = """## Lezione scritta a parti
+La lezione completa è divisa in {total} parti per gestire la lunghezza. Stai scrivendo la parte {number} di {total}.
+Tratta in questa parte SOLO questi argomenti dell'inventario, in modo completo: {topics}.
+Le altre parti tratteranno: {others}. Non ripeterne i contenuti, ma puoi rimandarvi brevemente.
+{opening}{closing}Compila «title», «subtitle», «footer_label» e «limits_notice» come per l'intero documento (verranno usati quelli della prima parte)."""
+
+LESSON_PART_OPENING = "Questa è la prima parte: inizia con la sezione su obiettivo e perimetro della lezione e sui limiti della fonte.\n"
+LESSON_PART_CLOSING = "Questa è l'ultima parte: dopo gli argomenti assegnati chiudi con la sezione di uso pratico/correzioni da ricordare e con la sezione «Fonti e limiti».\n"
 
 GUIDE_TASK = """## Compito: «Guida di studio»
 Scrivi una guida di studio più sintetica della lezione, utile a capire e ricordare. Indicativamente 3-5 pagine A4 (circa 1.300-2.500 parole), adattate alla quantità di contenuto. Deve essere coerente con la lezione completa allegata: stessi numeri, stesse condizioni, stesse avvertenze.
@@ -149,6 +157,8 @@ Confronta l'inventario con i tre documenti (lezione, guida, brochure) e individu
 - nella brochure: remunerazione della rete, obiettivi di vendita, istruzioni interne, gergo, promesse non supportate;
 - limiti della fonte (interruzioni) non dichiarati.
 Usa gravità «alta» per errori di fatto, invenzioni, calcoli sbagliati, contenuti interni nella brochure e omissioni di argomenti sostanziali; «media» per imprecisioni e ambiguità non segnalate; «bassa» per miglioramenti di forma. In «posizione» indica sezione e blocco. Se non trovi problemi, esito «ok» e lista vuota."""
+
+REVISION_PART_NOTE = """Il documento da rivedere è la parte {number} di {total} della lezione completa, che tratta: {topics}. Correggi solo i problemi che riguardano questa parte (o gli argomenti assegnati a questa parte); se nessun problema la riguarda, restituiscila invariata."""
 
 REVISION_TASK = """## Compito: revisione del documento
 Ricevi un documento già generato e l'elenco dei problemi rilevati dal controllo. Restituisci il documento completo corretto, nello stesso formato JSON:
