@@ -93,6 +93,14 @@ def friendly_error(exc: Exception) -> LLMError:
     if isinstance(exc, anthropic.RateLimitError):
         return LLMError("Limite di richieste dell'API raggiunto. Attendi qualche minuto e premi «Riprova».", kind="rate_limit")
     if isinstance(exc, anthropic.BadRequestError):
+        if "usage limit" in lowered or "spend limit" in lowered:
+            date = re.search(r"(\d{4})-(\d{2})-(\d{2})", detail)
+            when = f" L'accesso tornerà automaticamente il {date.group(3)}/{date.group(2)}/{date.group(1)}." if date else ""
+            return LLMError(
+                "Hai raggiunto il limite di spesa impostato per la chiave API nella Console Anthropic." + when
+                + " Per continuare subito, alza il limite in console.anthropic.com → Settings → Limits, poi premi «Riprova».",
+                retryable=True, kind="usage_limit",
+            )
         if "credit balance" in lowered or "billing" in lowered:
             return LLMError("Credito API insufficiente: ricarica il credito nella Console Anthropic e premi «Riprova».", kind="billing")
         if "prompt is too long" in lowered or "too long" in lowered:

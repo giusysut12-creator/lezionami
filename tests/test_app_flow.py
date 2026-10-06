@@ -250,3 +250,14 @@ def test_step_deadline_returns_clear_error(app_url, mock_state):
         os.environ.pop("STEP_DEADLINE_SECONDS")
     assert info.value.retryable and "entro 2 secondi" in info.value.detail
     assert elapsed < 5
+
+
+def test_usage_limit_error_is_explained(app_url, mock_state):
+    mock_state.fail_times = -1
+    mock_state.fail_status = 400
+    mock_state.fail_body = {"type": "error", "error": {"type": "invalid_request_error",
+                            "message": "You have reached your specified API usage limits. You will regain access on 2026-11-01 at 00:00 UTC."}}
+    with pytest.raises(StepFailed) as info:
+        process(app_url, FIXTURES / "breve.txt")
+    assert "limite di spesa" in info.value.detail and "01/11/2026" in info.value.detail
+    assert "Settings → Limits" in info.value.detail
