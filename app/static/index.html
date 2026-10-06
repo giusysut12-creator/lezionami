@@ -32,7 +32,7 @@
 
     <section class="intro">
       <h1>Trasforma una trascrizione in tre PDF</h1>
-      <p>Carica la trascrizione di una lezione o di un webinar: otterrai una <b>lezione completa</b>, una <b>guida di studio</b> e una <b>brochure per il cliente</b>, coerenti tra loro.</p>
+      <p>Carica la trascrizione di una lezione o di un webinar: otterrai una <b>lezione completa</b>, una <b>guida di studio</b> e una <b>brochure per il cliente</b>, coerenti tra loro. I documenti si basano <b>solo su quanto detto nella trascrizione</b>: nessuna informazione viene aggiunta da altre fonti.</p>
     </section>
 
     <form id="jobForm" novalidate>
@@ -78,31 +78,9 @@
         <p class="hint">Se lasci vuoti titolo e data, vengono ricavati dalla trascrizione quando presenti.</p>
       </section>
 
-      <!-- 3. Fonti aggiuntive -->
-      <section class="card">
-        <div class="card-head"><span class="step">3</span><h2>Fonti ufficiali <small>facoltative</small></h2></div>
-        <p class="muted">KID, prospetti, condizioni contrattuali o schede prodotto. Vengono usate come fonti aggiuntive, distinte da quanto detto nella lezione, con titolo, data e pagina quando disponibili.</p>
-        <label class="file-btn">
-          <input type="file" id="sourceFiles" accept=".txt,.docx,.pdf,.md" multiple>
-          <span>+ Aggiungi documenti</span>
-        </label>
-        <ul class="file-list" id="sourceList"></ul>
-
-        <div class="toggle-row">
-          <label class="switch">
-            <input type="checkbox" id="webSearch" name="web_search">
-            <span class="slider" aria-hidden="true"></span>
-          </label>
-          <div>
-            <label for="webSearch"><b>Verifica su fonti ufficiali online</b></label>
-            <p class="muted small">Disattivata di norma. Se attiva, l'AI consulta solo siti ufficiali (compagnia, autorità di vigilanza) e i documenti indicano quali pagine sono state lette e quando. Se la ricerca non riesce, nulla viene dichiarato verificato. Può aumentare tempi e costi.</p>
-          </div>
-        </div>
-      </section>
-
       <section class="privacy">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.4 7.5 9.5 4.3-1.1 7.5-4.9 7.5-9.5V6L12 3Z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
-        <p><b>Privacy.</b> Il testo e i documenti caricati vengono inviati <span id="serverNote">al server dell'applicazione e </span>ad Anthropic (fornitore dell'AI Claude) solo per l'elaborazione. Il server non conserva nulla: trascrizione, risultati intermedi e PDF restano soltanto in questa pagina del tuo browser e spariscono quando la chiudi o premi «Cancella i dati». Evita di caricare dati personali non necessari.</p>
+        <p><b>Privacy.</b> Il testo caricato viene inviato <span id="serverNote">al server dell'applicazione e </span>ad Anthropic (fornitore dell'AI Claude) solo per l'elaborazione. Il server non conserva nulla: trascrizione, risultati intermedi e PDF restano soltanto in questa pagina del tuo browser e spariscono quando la chiudi o premi «Cancella i dati». Evita di caricare dati personali non necessari.</p>
       </section>
 
       <div class="actions">

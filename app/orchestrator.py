@@ -77,11 +77,6 @@ def run_all(call: Call, state: dict, on_event: Callable[[str, str], None] | None
         state["inventory"], state["lesson_plan"] = result["inventory"], result["lesson_plan"]
         event("inventario", result["detail"])
 
-    # Verifica web facoltativa
-    if state["meta"].get("web_search") and not state.get("web"):
-        state["web"] = step("web")
-        event("verifica_web", state["web"]["stato"])
-
     # Lezione a parti: la prima da sola (scrive la cache dei prompt), poi le altre in parallelo
     parts = state.setdefault("lesson_parts", {})
     plan_parts = state["lesson_plan"]

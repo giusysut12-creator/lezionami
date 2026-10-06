@@ -27,8 +27,6 @@ def main() -> int:
     parser.add_argument("--titolo", default="")
     parser.add_argument("--data", default="")
     parser.add_argument("--destinatario", default="")
-    parser.add_argument("--fonte", type=Path, action="append", default=[], help="Documento ufficiale aggiuntivo (ripetibile)")
-    parser.add_argument("--web", action="store_true", help="Attiva la verifica su fonti ufficiali online")
     parser.add_argument("--uscita", type=Path, default=Path("output"))
     args = parser.parse_args()
 
@@ -38,8 +36,7 @@ def main() -> int:
     try:
         state = extract_inputs(
             settings, (args.trascrizione.name, args.trascrizione.read_bytes()), "",
-            [(p.name, p.read_bytes()) for p in args.fonte],
-            {"title": args.titolo, "lesson_date": args.data, "recipient": args.destinatario, "web_search": args.web},
+            {"title": args.titolo, "lesson_date": args.data, "recipient": args.destinatario},
         )
     except ExtractionError as exc:
         print(f"ERRORE: {exc}")

@@ -34,8 +34,6 @@ WARN_BG = colors.HexColor("#FFF6E8")
 WARN_LINE = colors.HexColor("#E2A23B")
 INTERNAL_BG = colors.HexColor("#F1F1F4")
 INTERNAL_LINE = colors.HexColor("#8C8AA0")
-SOURCE_BG = colors.HexColor("#EEF6F3")
-SOURCE_LINE = colors.HexColor("#3E9C7E")
 
 FONT = "DejaVuSans"
 FONT_BOLD = "DejaVuSans-Bold"
@@ -208,7 +206,6 @@ BOX_STYLES = {
     "note": ("NOTA", ACCENT_FAINT, ACCENT),
     "warning": ("ATTENZIONE · punto incompleto, ambiguo o da verificare", WARN_BG, WARN_LINE),
     "internal": ("USO INTERNO · non destinato al cliente", INTERNAL_BG, INTERNAL_LINE),
-    "source_note": ("INTEGRAZIONE DA FONTE ESTERNA · non detta dal relatore", SOURCE_BG, SOURCE_LINE),
 }
 
 
@@ -216,8 +213,6 @@ def build_box(block: dict, styles: dict, kind: str, split_rows: bool = False) ->
     label, background, line = BOX_STYLES[block["type"]]
     if kind == "brochure" and block["type"] == "example":
         label = "ESEMPIO · cifre ipotetiche"
-    if kind == "brochure" and block["type"] == "source_note":
-        label = "DALLA DOCUMENTAZIONE UFFICIALE"
     label_style = ParagraphStyle("lbl", parent=styles["box_label"], textColor=line if block["type"] != "example" and block["type"] != "note" else ACCENT_DARK)
     inner: list = [Paragraph(label, label_style)]
     if block.get("title"):

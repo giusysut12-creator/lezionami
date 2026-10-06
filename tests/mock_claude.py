@@ -28,7 +28,6 @@ class MockState:
         self.fail_status = 500
         self.fail_body: dict = {"type": "error", "error": {"type": "api_error", "message": "Internal server error"}}
         self.fail_times = 0                     # quante volte fallire (-1 = sempre)
-        self.web_error = False
         self.reject_fallbacks = False
         self.delay_seconds = 0                  # attesa prima della risposta (simula un modello lento)
 
@@ -146,29 +145,6 @@ def check_response() -> dict:
     return {"esito": "ok", "problemi": [], "argomenti_non_coperti": [], "note": TEST_MARK}
 
 
-def web_blocks() -> list[dict]:
-    if STATE.web_error:
-        return [
-            {"type": "server_tool_use", "id": "srvtoolu_1", "name": "web_search", "input": {"query": "test"}},
-            {"type": "web_search_tool_result", "tool_use_id": "srvtoolu_1",
-             "content": {"type": "web_search_tool_result_error", "error_code": "unavailable"}},
-            {"type": "text", "text": "Non è stato possibile completare la ricerca."},
-        ]
-    url = "https://www.esempio-compagnia.it/kid-prodotto-di-prova.pdf"
-    verdict = {"verifiche": [{"affermazione": "Caricamento 1,5%", "esito": "confermata", "dettaglio": TEST_MARK,
-                              "fonte_titolo": "KID di prova", "fonte_url": url, "data_documento": "01/01/2026"},
-                             {"affermazione": "Penale 2%", "esito": "confermata", "dettaglio": TEST_MARK,
-                              "fonte_titolo": "Pagina non consultata", "fonte_url": "https://inventato.example/x",
-                              "data_documento": ""}],
-               "note": TEST_MARK}
-    return [
-        {"type": "server_tool_use", "id": "srvtoolu_1", "name": "web_search", "input": {"query": "test"}},
-        {"type": "web_search_tool_result", "tool_use_id": "srvtoolu_1", "content": [
-            {"type": "web_search_result", "url": url, "title": "KID di prova", "encrypted_content": "x", "page_age": "1 gennaio 2026"}]},
-        {"type": "text", "text": "```json\n" + json.dumps(verdict, ensure_ascii=False) + "\n```"},
-    ]
-
-
 class Handler(BaseHTTPRequestHandler):
     def log_message(self, *args):
         pass
@@ -198,19 +174,16 @@ class Handler(BaseHTTPRequestHandler):
                     STATE.fail_times -= 1
                 return self._send_json(STATE.fail_status, STATE.fail_body)
         user = _user_text(body)
-        if body.get("tools"):
-            blocks = web_blocks()
+        schema = (((body.get("output_config") or {}).get("format") or {}).get("schema") or {}).get("properties", {})
+        if "argomenti_duplicati" in schema:
+            payload = crosscheck_response(user)
+        elif "argomenti" in schema:
+            payload = inventory_response(user)
+        elif "sections" in schema:
+            payload = document_response(user)
         else:
-            schema = (((body.get("output_config") or {}).get("format") or {}).get("schema") or {}).get("properties", {})
-            if "argomenti_duplicati" in schema:
-                payload = crosscheck_response(user)
-            elif "argomenti" in schema:
-                payload = inventory_response(user)
-            elif "sections" in schema:
-                payload = document_response(user)
-            else:
-                payload = check_response()
-            blocks = [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]
+            payload = check_response()
+        blocks = [{"type": "text", "text": json.dumps(payload, ensure_ascii=False)}]
         self._stream(body, blocks)
 
     def _stream(self, body: dict, blocks: list[dict]):

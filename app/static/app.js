@@ -7,13 +7,12 @@
  */
 
 const $ = (sel) => document.querySelector(sel);
-const ui = { tab: "file", sources: [], maxMb: 30, parallel: 3, running: false, urls: [] };
+const ui = { tab: "file", maxMb: 30, parallel: 3, running: false, urls: [] };
 let run = null; // { form, state, phases, error }
 
 const PHASES = [
   ["estrazione", "Estrazione e controllo del testo", 5],
   ["inventario", "Inventario di argomenti, numeri e condizioni", 25],
-  ["verifica_web", "Verifica su fonti ufficiali (web)", 8],
   ["generazione", "Generazione dei tre documenti", 37],
   ["controllo", "Controllo di coerenza e copertura", 15],
   ["pdf", "Creazione e verifica dei PDF", 10],
@@ -87,26 +86,6 @@ $("#transcriptText").addEventListener("input", (e) => {
   $("#charCount").textContent = `${e.target.value.length.toLocaleString("it-IT")} caratteri`;
 });
 
-function renderSources() {
-  const list = $("#sourceList");
-  list.innerHTML = "";
-  ui.sources.forEach((file, index) => {
-    const li = document.createElement("li");
-    li.innerHTML = `<span>${escapeHtml(file.name)} <span class="muted">· ${(file.size / 1024).toFixed(0)} KB</span></span>`;
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.textContent = "Rimuovi";
-    btn.addEventListener("click", () => { ui.sources.splice(index, 1); renderSources(); });
-    li.appendChild(btn);
-    list.appendChild(li);
-  });
-}
-$("#sourceFiles").addEventListener("change", (e) => {
-  for (const file of e.target.files) ui.sources.push(file);
-  e.target.value = "";
-  renderSources();
-});
-
 function formError(msg) {
   $("#formError").textContent = msg;
   $("#formError").hidden = !msg;
@@ -129,12 +108,7 @@ function buildForm() {
     form.append("transcript_text", text);
   }
   for (const name of ["title", "lesson_date", "recipient"]) form.append(name, $(`[name=${name}]`).value.trim());
-  form.append("web_search", $("#webSearch").checked ? "true" : "false");
-  for (const file of ui.sources) {
-    total += file.size;
-    form.append("sources", file);
-  }
-  if (total > limit) throw new Error(`I file caricati superano in totale ${ui.maxMb} MB, il limite di questo server.`);
+  if (total > limit) throw new Error(`Il file supera ${ui.maxMb} MB, il limite di questo server.`);
   return form;
 }
 
@@ -173,7 +147,7 @@ async function errorFrom(res, seconds) {
     }
     return new StepError(`Il passo ha superato il tempo massimo consentito dal server (interrotto dopo ${seconds} secondi). Premi «Riprova»; se si ripete, imposta CLAUDE_EFFORT=medium oppure, con un piano Pro, aumenta maxDuration in vercel.json.`);
   }
-  if (res.status === 413) return new StepError("I dati inviati superano il limite di dimensione del server (4,5 MB su Vercel). Riduci o togli le fonti aggiuntive.", false);
+  if (res.status === 413) return new StepError("I dati inviati superano il limite di dimensione del server (4,5 MB su Vercel). Usa un file più piccolo o la versione testuale (TXT).", false);
   return new StepError(`Errore del server (codice ${res.status}, dopo ${seconds} secondi). Premi «Riprova».`);
 }
 
@@ -196,13 +170,12 @@ const STEP_KEYS = {
   inventory: ["meta", "source", "plan"],
   inventory_part: ["meta", "source", "plan"],
   inventory_merge: ["meta", "source", "plan", "inventory_partials"],
-  web: ["meta", "source", "inventory"],
-  lesson_part: ["meta", "source", "inventory", "web"],
-  guide: ["meta", "source", "inventory", "web", "lesson_parts"],
-  brochure: ["meta", "source", "inventory", "web", "lesson_parts"],
-  check: ["meta", "source", "inventory", "web", "lesson_parts", "docs"],
-  revise: ["meta", "source", "inventory", "web", "lesson_parts", "docs", "check"],
-  finalize: ["meta", "source", "inventory", "web", "lesson_parts", "docs", "check", "revised", "warnings"],
+  lesson_part: ["meta", "source", "inventory"],
+  guide: ["meta", "source", "inventory", "lesson_parts"],
+  brochure: ["meta", "source", "inventory", "lesson_parts"],
+  check: ["meta", "source", "inventory", "lesson_parts", "docs"],
+  revise: ["meta", "source", "inventory", "lesson_parts", "docs", "check"],
+  finalize: ["meta", "source", "inventory", "lesson_parts", "docs", "check", "revised", "warnings"],
 };
 
 async function step(name, args = {}) {
@@ -278,22 +251,6 @@ async function execute() {
         const result = await step("inventory");
         Object.assign(s(), { inventory: result.inventory, lesson_plan: result.lesson_plan });
         setPhase(current, "completata", result.detail);
-      }
-    }
-
-    current = "verifica_web";
-    if (!s().meta.web_search) {
-      setPhase(current, "saltata", "Disattivata: i documenti si basano su trascrizione e fonti allegate");
-    } else if (!s().web) {
-      setPhase(current, "in_corso", "Ricerca su fonti ufficiali");
-      s().web = await step("web");
-      if (s().web.stato === "eseguita") {
-        const confirmed = s().web.verifiche.filter((v) => v.esito === "confermata").length;
-        setPhase(current, "completata", `${s().web.fonti.length} documenti consultati, ${confirmed} condizioni confermate`);
-      } else {
-        const msg = `Verifica web non riuscita (${s().web.messaggio}): nessuna condizione è dichiarata verificata.`;
-        s().warnings.push(msg);
-        setPhase(current, "non_riuscita", "Ricerca non riuscita: nessuna condizione è dichiarata verificata");
       }
     }
 
@@ -496,17 +453,6 @@ function renderResults() {
     <dt>Argomenti non coperti</dt><dd>${cov.argomenti_non_coperti ?? "–"}</dd>
     <dt>Passaggi citati</dt><dd>${cov.passaggi_citati_nella_lezione ?? "–"} di ${cov.passaggi_trascrizione ?? "–"}</dd>
   </dl>`);
-  const w = run.state.web;
-  if (run.state.meta.web_search) {
-    let html = "<h3>Verifica web</h3>";
-    if (w && w.stato === "eseguita") {
-      html += `<p class="small">Eseguita il ${escapeHtml(w.consultato_il)} · ${w.verifiche.length} condizioni controllate.</p><ul>` +
-        w.fonti.map((src) => `<li><a href="${escapeHtml(src.url)}" target="_blank" rel="noopener noreferrer">${escapeHtml(src.titolo || src.url)}</a>${src.data_pagina ? ` <span class="muted">(${escapeHtml(src.data_pagina)})</span>` : ""}</li>`).join("") + "</ul>";
-    } else {
-      html += `<p class="small">Non riuscita${w && w.messaggio ? `: ${escapeHtml(w.messaggio)}` : ""}. Nessuna condizione è dichiarata verificata nei documenti.</p>`;
-    }
-    parts.push(html);
-  }
   if (final.issues.length) {
     parts.push("<h3>Punti da verificare</h3><ul>" + final.issues.map((i) =>
       `<li><span class="sev sev-${i.gravita}">${i.gravita}</span><b>${escapeHtml(DOC_LABEL[i.documento] || i.documento)}</b> · ${escapeHtml(i.problema)}</li>`).join("") + "</ul>");

@@ -263,38 +263,3 @@ class ClaudeClient:
         log.info("fase=%s durata=%.1fs token_in=%s token_out=%s", label, time.monotonic() - started,
                  getattr(message.usage, "input_tokens", "?"), getattr(message.usage, "output_tokens", "?"))
         return data
-
-    def call_web(self, system: str, user_content: str, label: str) -> tuple[str, list]:
-        """Chiamata con gli strumenti server di ricerca e lettura web.
-
-        Restituisce il testo finale e tutti i blocchi di contenuto (per estrarre
-        le fonti effettivamente consultate). Gestisce lo stop «pause_turn».
-        """
-        tools = [
-            {"type": self.settings.web_search_tool, "name": "web_search",
-             "max_uses": self.settings.web_search_max_uses},
-            {"type": self.settings.web_fetch_tool, "name": "web_fetch",
-             "max_uses": self.settings.web_search_max_uses},
-        ]
-        params = self._base_params(system, user_content, 32000, self.settings.effort_analysis)
-        params["tools"] = tools
-        messages = params["messages"]
-        all_blocks: list = []
-        try:
-            for _ in range(5):
-                message = self._stream(params)
-                self.usage.add(message.usage)
-                all_blocks.extend(message.content)
-                if message.stop_reason == "pause_turn":
-                    messages.append({"role": "assistant", "content": message.content})
-                    continue
-                self._check_stop(message, label)
-                break
-        except LLMError:
-            raise
-        except Exception as exc:
-            raise friendly_error(exc) from exc
-        final_text = "".join(
-            block.text for block in message.content if getattr(block, "type", "") == "text"
-        )
-        return final_text, all_blocks

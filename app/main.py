@@ -140,8 +140,6 @@ async def extract(
     title: Annotated[str, Form()] = "",
     lesson_date: Annotated[str, Form()] = "",
     recipient: Annotated[str, Form()] = "",
-    web_search: Annotated[str, Form()] = "false",
-    sources: Annotated[list[UploadFile] | None, File()] = None,
 ) -> dict:
     """Passo 1: estrazione e controllo del testo (nessuna chiamata AI)."""
     settings = get_settings()
@@ -151,13 +149,9 @@ async def extract(
         transcript = await _read_upload(transcript_file, limit)
     elif len(transcript_text.strip()) < 20:
         raise HTTPException(400, "Carica un file con la trascrizione oppure incolla il testo (almeno qualche frase).")
-    source_files = [await _read_upload(u, limit) for u in (sources or []) if u.filename]
-    if len(source_files) > 10:
-        raise HTTPException(400, "Puoi allegare al massimo 10 fonti aggiuntive.")
-    meta = {"title": title, "lesson_date": lesson_date, "recipient": recipient,
-            "web_search": web_search.lower() in ("true", "1", "on", "si", "sì")}
+    meta = {"title": title, "lesson_date": lesson_date, "recipient": recipient}
     try:
-        return extract_inputs(settings, transcript, transcript_text if transcript is None else "", source_files, meta)
+        return extract_inputs(settings, transcript, transcript_text if transcript is None else "", meta)
     except ExtractionError as exc:
         raise HTTPException(422, str(exc)) from exc
 

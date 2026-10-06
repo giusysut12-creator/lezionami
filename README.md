@@ -6,6 +6,8 @@ Applicazione web che trasforma la trascrizione di una lezione (TXT, DOCX o PDF t
 2. **Guida di studio** – `Guida_studio_Titolo.pdf`
 3. **Brochure cliente** – `Brochure_cliente_Titolo.pdf`
 
+I documenti si basano **esclusivamente su quanto detto nella trascrizione**: l'app non aggiunge informazioni da documenti, internet o conoscenze esterne (sono ammesse solo spiegazioni generali dei termini tecnici ed esempi ipotetici dichiarati come tali). Se un argomento non è trattato nella trascrizione, i documenti lo dicono invece di completarlo.
+
 I PDF si scaricano singolarmente o in un unico ZIP, insieme a un report di verifica. L'elaborazione usa l'API di Claude (Anthropic) dal backend. Funziona **online su Vercel** (protetta da password) oppure sul proprio computer. Non servono database.
 
 ---
@@ -47,7 +49,7 @@ Su Vercel ogni richiesta ha un tempo massimo e il server non conserva memoria tr
 | Limite | Effetto | Rimedio |
 |---|---|---|
 | 300 secondi per richiesta (piano Hobby) | Ogni passo si ferma da solo a 285 secondi con un errore che indica il tempo trascorso. | Premi *Riprova*; se si ripete, imposta `CLAUDE_EFFORT=medium` o riduci `SEGMENT_MAX_CHARS`, oppure con il piano Pro alza `maxDuration` in `vercel.json` (fino a 800) e `STEP_DEADLINE_SECONDS`. Se l'errore compare dopo circa 60 secondi, Fluid Compute non è attivo. |
-| 4,5 MB per richiesta | File caricati in totale fino a 4 MB. | Per KID e set informativi molto pesanti, caricare solo le pagine utili o la versione testuale. |
+| 4,5 MB per richiesta | File della trascrizione fino a 4 MB. | Per PDF molto pesanti usare la versione TXT o DOCX. |
 | Piano Hobby solo per uso personale non commerciale | Termini d'uso di Vercel. | Per uso aziendale serve il piano Pro. |
 
 Alternative già pronte: **Render** (`render.yaml`, *New → Blueprint*, server sempre attivo da circa 7 $/mese, regione Francoforte) e qualsiasi servizio che esegue container (`Dockerfile`). In entrambi i casi va impostata `APP_PASSWORD`.
@@ -70,7 +72,7 @@ Serve Python **3.10 o successivo** ([python.org/downloads](https://www.python.or
 In locale (indirizzo `127.0.0.1`) la password non è richiesta. Dalla riga di comando, senza browser:
 ```bash
 python genera.py tests/fixtures/breve.txt --titolo "Orizzonte Famiglia" --uscita output
-python genera.py lezione.docx --fonte KID.pdf --fonte Condizioni.pdf --destinatario "pensionati" --web
+python genera.py lezione.docx --destinatario "pensionati"
 ```
 
 ## 3. Esempio di utilizzo
@@ -78,18 +80,16 @@ python genera.py lezione.docx --fonte KID.pdf --fonte Condizioni.pdf --destinata
 1. Apri l'app (online: inserisci la password).
 2. In **Trascrizione** carica `tests/fixtures/breve.txt` (trascrizione fittizia di prova) oppure incolla un testo.
 3. Facoltativo: titolo «Orizzonte Famiglia», data, destinatario della brochure (es. «famiglie con figli piccoli»).
-4. Facoltativo: allega KID, condizioni o schede prodotto in **Fonti ufficiali**; attiva la **verifica online** solo se serve.
-5. Premi **Genera i tre PDF** e segui le fasi.
-6. Scarica i tre PDF o **Scarica tutto (ZIP)**; apri *Controlli eseguiti e punti da verificare* per copertura, segnalazioni e costo stimato.
+4. Premi **Genera i tre PDF** e segui le fasi.
+5. Scarica i tre PDF o **Scarica tutto (ZIP)**; apri *Controlli eseguiti e punti da verificare* per copertura, segnalazioni e costo stimato.
 
 ## 4. Le fasi dell'elaborazione
 
 | Fase | Cosa fa |
 |---|---|
-| 1. Estrazione e controllo | Legge TXT/DOCX/PDF. Un PDF fatto **solo di immagini** viene segnalato e l'elaborazione si ferma senza chiamare l'AI. Rileva interruzioni (es. «Questo file è più lungo di 30 minuti», inviti ad abbonamenti, testo che finisce a metà frase). Divide il testo in passaggi numerati `T001, T002…` (documenti: `D1-001 p.3`). |
+| 1. Estrazione e controllo | Legge TXT/DOCX/PDF. Un PDF fatto **solo di immagini** viene segnalato e l'elaborazione si ferma senza chiamare l'AI. Rileva interruzioni (es. «Questo file è più lungo di 30 minuti», inviti ad abbonamenti, testo che finisce a metà frase). Divide il testo in passaggi numerati `T001, T002…`. |
 | 2. Inventario | Argomenti, numeri con base di calcolo e periodo, condizioni, eccezioni, domande, termini, opinioni, informazioni commerciali interne, criticità. Oltre `SINGLE_PASS_MAX_CHARS` il testo è diviso in segmenti sovrapposti analizzati in parallelo; l'unione è fatta dal programma (nessun elemento viene scartato) e un controllo incrociato AI segnala contraddizioni tra segmenti. |
-| Verifica web (facoltativa, spenta) | Solo fonti ufficiali; registra pagine consultate e orario. Una «conferma» che cita una pagina non consultata viene declassata a «non verificabile»; se la ricerca fallisce nulla è dichiarato verificato. |
-| 3. Generazione | Lezione completa (fonte integrale + inventario), scritta in più parti se gli argomenti sono molti; poi guida e brochure basate su inventario e lezione, per coerenza. |
+| 3. Generazione | Lezione completa (trascrizione integrale + inventario), scritta in più parti se gli argomenti sono molti; poi guida e brochure basate su inventario e lezione, per coerenza. |
 | 4. Controllo | Controllo AI incrociato (copertura, coerenza, invenzioni, distinzioni finanziarie, calcoli, contenuti interni nella brochure) e controlli automatici (ricalcolo delle operazioni, numeri assenti dalle fonti, termini interni e promesse nella brochure, copertura, dichiarazione dei limiti). I documenti con problemi gravi o medi vengono revisionati. |
 | 5. PDF | A4, testo selezionabile, font DejaVu Sans incluso, tabelle con intestazione ripetuta e righe non spezzate, riquadri per esempi ipotetici, avvertenze, uso interno e fonti esterne, numeri di pagina «n / totale». Ogni PDF viene riletto per verificarne pagine e testo. |
 
@@ -121,7 +121,6 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 |---|---|
 | **API di Claude (Anthropic)** – obbligatoria | A consumo, senza canone. Opus 5.5: 4 $ / milione di token in ingresso, 20 $ / milione in uscita. Sonnet 5.5: 2 $ / 10 $. Verifica i prezzi vigenti su [anthropic.com/pricing](https://www.anthropic.com/pricing). |
 | **Vercel** – solo se pubblichi online | Hobby gratuito (uso personale non commerciale); Pro 20 $/mese per utente per uso aziendale e tempi più lunghi. |
-| Ricerca web di Anthropic – facoltativa | Costo per numero di ricerche secondo listino, più i token delle pagine lette. Va abilitata per l'organizzazione nella Console Anthropic. |
 
 Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $; un'ora di lezione (circa 9.000 parole) circa 1,5–4 $; registrazioni di più ore di più. L'app mostra a fine lavoro token usati e costo stimato.
 
@@ -135,15 +134,16 @@ Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $
 
 ## 8. Verifiche eseguite e prove ancora da fare
 
-**Eseguite senza chiave API** (`python -m pytest`, 49 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
+**Eseguite senza chiave API** (`python -m pytest`, 46 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
 
 - trascrizione breve, incollata o da file; tre PDF, report e nomi dei file;
 - trascrizione lunga (145.000 caratteri): 6 segmenti, unione, controllo incrociato, lezione scritta in più parti con tutti gli argomenti, parte finale presente;
 - trascrizione interrotta (messaggio «più lungo di 30 minuti» rilevato e passato al modello);
 - fonte contraddittoria con istruzione nascosta: resta dentro `<trascrizione>`, fuori dalle istruzioni;
-- PDF solo immagini (trascrizione bloccata senza chiamate API; fonte aggiuntiva esclusa con avviso);
+- PDF solo immagini (bloccato senza chiamate API);
+- nessuna ricerca web né fonte esterna nelle richieste all'AI; regola «unica fonte: la trascrizione» nel prompt;
 - errori API: chiave non valida, credito esaurito, errore del server dopo i ritentativi, rete assente; ripresa dal passo fallito senza ripetere l'inventario;
-- verifica web riuscita e fallita; impaginazione (A4, numeri di pagina, testo selezionabile, intestazioni ripetute, celle enormi);
+- impaginazione (A4, numeri di pagina, testo selezionabile, intestazioni ripetute, celle enormi);
 - modalità online: password obbligatoria, Vercel riconosciuto automaticamente, accesso errato/corretto, cookie falsificato, cambio password, blocco dopo tentativi, uscita;
 - browser (Chromium) desktop e iPhone 13 con simulazione Vercel: accesso, elaborazione completa, errore e *Riprova*, download di PDF, report e ZIP (verificato integro), nessuno scorrimento orizzontale né errore JavaScript.
 
@@ -152,19 +152,19 @@ Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $
    - `interrotta.txt`: il documento deve dichiarare l'interruzione, non completare la frase sui «danni da acqua condotta» e non presentare come valido lo sconto scaduto il 30 aprile 2026.
    - `contraddittoria.txt`: devono comparire le discordanze (caricamento 1% / 0,75%; commissione 1,2% / 1,4%); la brochure non deve contenere retrocessioni, obiettivi di vendita né «rendimento garantito al 5%».
 2. Su Vercel: una trascrizione breve e una lunga, verificando che nessun passo superi i 300 secondi.
-3. Una tua trascrizione reale con KID e condizioni, confrontando i PDF con quelli di riferimento (impaginazione, guida 3–5 pagine, brochure 2–4).
+3. Una tua trascrizione reale, confrontando i PDF con quelli di riferimento (impaginazione, guida 3–5 pagine, brochure 2–4).
 
 ## 9. Struttura del progetto
 
 ```
 app/
   main.py          server FastAPI, accesso, endpoint (index.py lo espone a Vercel)
-  steps.py         passi senza stato: inventario, verifica web, documenti, controllo, PDF
+  steps.py         passi senza stato: inventario, documenti, controllo, PDF
   orchestrator.py  sequenza dei passi per riga di comando e test (il browser usa app.js)
   extract.py       lettura TXT/DOCX/PDF, PDF solo immagini, interruzioni, passaggi
   prompts.py       prompt e regole di accuratezza
   schemas.py       schemi JSON degli output strutturati
-  llm.py           client Claude, errori comprensibili, verifica web
+  llm.py           client Claude, errori comprensibili, scadenza dei passi
   checks.py        controlli automatici (calcoli, numeri, brochure, copertura)
   pdf_render.py    impaginazione PDF
   auth.py          password e sessioni per l'uso online

@@ -25,7 +25,7 @@ STR_LIST = {"type": "array", "items": {"type": "string"}}
 REFS = {
     "type": "array",
     "items": {"type": "string"},
-    "description": "Identificativi dei passaggi di origine, per esempio T004 oppure D1-012.",
+    "description": "Identificativi dei passaggi della trascrizione, per esempio T004.",
 }
 
 # ---------------------------------------------------------------------------
@@ -55,7 +55,6 @@ INVENTORY_SCHEMA = _obj({
         ]},
         "natura": {"type": "string", "enum": [
             "fatto_trascrizione", "opinione_relatore", "indicazione_commerciale_interna",
-            "dato_documento_ufficiale",
         ]},
         "testo": {**STR, "description": "Contenuto fedele alla fonte, senza completare frasi interrotte."},
         "valore": {**STR, "description": "Numero o valore esatto come detto nella fonte, oppure vuoto."},
@@ -78,19 +77,12 @@ INVENTORY_SCHEMA = _obj({
     "criticita": {"type": "array", "items": _obj({
         "tipo": {"type": "string", "enum": [
             "incompleto", "ambiguo", "contraddizione", "interruzione", "numero_incerto",
-            "nome_incerto", "dato_storico", "finestra_temporale", "discordanza_fonti", "altro",
+            "nome_incerto", "dato_storico", "finestra_temporale", "argomento_non_sviluppato", "altro",
         ]},
         "descrizione": STR,
         "riferimenti": REFS,
     })},
     "info_commerciali_interne": {"type": "array", "items": _obj({"testo": STR, "riferimenti": REFS})},
-    "fonti_documentali": {"type": "array", "items": _obj({
-        "id": {**STR, "description": "Identificativo della fonte, es. D1."},
-        "titolo": STR,
-        "data": STR,
-        "tipo": {**STR, "description": "KID, prospetto, condizioni contrattuali, scheda prodotto, altro."},
-        "note": STR,
-    })},
 })
 
 # ---------------------------------------------------------------------------
@@ -107,7 +99,6 @@ BLOCK_TYPES = [
     "note",            # nota informativa
     "warning",         # punto incompleto, ambiguo, contraddittorio o da verificare
     "internal",        # informazione commerciale interna (solo lezione)
-    "source_note",     # integrazione da documento ufficiale o da verifica web, con fonte
     "qa",              # domanda (title) e risposta (text)
 ]
 

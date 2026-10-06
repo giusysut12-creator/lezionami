@@ -22,10 +22,9 @@ from datetime import datetime
 from . import checks, prompts
 from .config import Settings
 from .extract import (
-    ExtractionError, build_source_passages, build_transcript_passages, detect_issues,
-    extract_file, from_pasted_text, segment_passages,
+    build_transcript_passages, detect_issues, extract_file, from_pasted_text, segment_passages,
 )
-from .llm import ClaudeClient, LLMError, Usage, parse_json_text
+from .llm import ClaudeClient, Usage
 from .pdf_render import DOC_KIND_LABEL, file_name, render_pdf
 from .schemas import CHECK_SCHEMA, CROSSCHECK_SCHEMA, DOCUMENT_SCHEMA, INVENTORY_SCHEMA
 
@@ -59,8 +58,7 @@ def _passages_dicts(passages) -> list[dict]:
     return [{"id": p.id, "text": p.text, "page": p.page} for p in passages]
 
 
-def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pasted_text: str,
-                   sources: list[tuple[str, bytes]], meta: dict) -> dict:
+def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pasted_text: str, meta: dict) -> dict:
     """Estrae il testo e prepara lo stato iniziale. Solleva ExtractionError."""
     if transcript is not None:
         doc = extract_file(transcript[0], transcript[1], "trascrizione")
@@ -71,30 +69,13 @@ def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pas
     signals = detect_issues(doc.text)
     warnings.extend(signals)
 
-    source_docs = []
-    for name, data in sources:
-        try:
-            source = extract_file(name, data, "fonte")
-        except ExtractionError as exc:
-            warnings.append(f"Fonte aggiuntiva esclusa: {exc}")
-            continue
-        build_source_passages(source, len(source_docs) + 1)
-        source_docs.append(source)
-        warnings.extend(source.warnings)
-
-    total_chars = len(doc.text) + sum(len(s.text) for s in source_docs)
     plan: dict = {"mode": "single", "parts": []}
-    if total_chars > settings.single_pass_max_chars:
+    if len(doc.text) > settings.single_pass_max_chars:
         plan["mode"] = "segmented"
         segments = segment_passages(doc.passages, settings.segment_max_chars)
         for index, segment in enumerate(segments, start=1):
             plan["parts"].append({"key": f"S{index}", "label": f"segmento {index} di {len(segments)}",
-                                  "kind": "trascrizione", "ids": [p.id for p in segment]})
-        for s_index, source in enumerate(source_docs, start=1):
-            for d_index, chunk in enumerate(segment_passages(source.passages, settings.segment_max_chars), start=1):
-                key = f"S{len(plan['parts']) + 1}"
-                plan["parts"].append({"key": key, "label": f"documento D{s_index} parte {d_index}",
-                                      "kind": "fonte", "source": s_index, "ids": [p.id for p in chunk]})
+                                  "ids": [p.id for p in segment]})
 
     words = len(doc.text.split())
     return {
@@ -102,23 +83,16 @@ def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pas
             "title": (meta.get("title") or "").strip()[:150],
             "lesson_date": (meta.get("lesson_date") or "").strip()[:60],
             "recipient": (meta.get("recipient") or "").strip()[:200],
-            "web_search": bool(meta.get("web_search")),
             "today": italian_date(datetime.now()),
         },
         "source": {
             "transcript": {"name": doc.name, "words": words, "chars": len(doc.text),
                            "passages": _passages_dicts(doc.passages)},
-            "sources": [
-                {"index": i, "name": s.name, "metadata_title": s.metadata_title, "metadata_date": s.metadata_date,
-                 "pages_total": s.pages_total, "chars": len(s.text), "passages": _passages_dicts(s.passages)}
-                for i, s in enumerate(source_docs, start=1)
-            ],
             "signals": signals,
         },
         "plan": plan,
         "warnings": warnings,
-        "detail": f"{words:,}".replace(",", ".") + f" parole, {len(doc.passages)} passaggi"
-                  + (f"; {len(source_docs)} fonti aggiuntive" if source_docs else ""),
+        "detail": f"{words:,}".replace(",", ".") + f" parole, {len(doc.passages)} passaggi",
     }
 
 
@@ -220,26 +194,11 @@ class Steps:
         passages = passages if passages is not None else self.source["transcript"]["passages"]
         return {"type": "text", "text": "<trascrizione>\n" + self._render(passages) + "\n</trascrizione>"}
 
-    def _source_blocks(self, only: dict[int, list[dict]] | None = None) -> list[dict]:
-        blocks = []
-        for source in self.source.get("sources", []):
-            index = source["index"]
-            passages = only.get(index) if only is not None else source["passages"]
-            if not passages:
-                continue
-            pages = f' pagine="{source["pages_total"]}"' if source.get("pages_total") else ""
-            header = (f'<fonte_documentale id="D{index}" file="{source["name"]}" titolo_metadati="{source.get("metadata_title", "")}" '
-                      f'data_metadati="{source.get("metadata_date", "")}"{pages}>')
-            blocks.append({"type": "text", "text": header + "\n" + self._render(passages) + "\n</fonte_documentale>"})
-        return blocks
-
     def _all_sources(self) -> list[dict]:
-        blocks = [self._transcript_block()] + self._source_blocks()
-        blocks[-1] = {**blocks[-1], "cache_control": {"type": "ephemeral"}}
-        return blocks
+        return [{**self._transcript_block(), "cache_control": {"type": "ephemeral"}}]
 
     def _sources_chars(self) -> int:
-        return self.source["transcript"].get("chars", 0) + sum(s.get("chars", 0) for s in self.source.get("sources", []))
+        return self.source["transcript"].get("chars", 0)
 
     @staticmethod
     def _json_block(tag: str, data, cache: bool = False) -> dict:
@@ -251,26 +210,12 @@ class Steps:
     def _task(self, text: str) -> dict:
         return {"type": "text", "text": self._header() + "\n\n" + text}
 
-    def _web_block(self) -> list[dict]:
-        web = self.state.get("web")
-        if not web or web.get("stato") != "eseguita" or not web.get("verifiche"):
-            note = "Nessuna verifica web disponibile: non dichiarare nulla come verificato online."
-            if self.meta.get("web_search") and web and web.get("stato") != "eseguita":
-                note = (f"La verifica web è stata richiesta ma non è riuscita ({web.get('messaggio', '')}). "
-                        "Non dichiarare nulla come verificato online.")
-            return [{"type": "text", "text": f"<verifiche_web>{note}</verifiche_web>"}]
-        return [self._json_block("verifiche_web", {
-            "consultate_il": web.get("consultato_il"),
-            "avvertenza": "Integrazioni recuperate online: non attribuirle al relatore; cita fonte e data.",
-            "verifiche": web.get("verifiche"),
-        })]
-
     def _lesson_base(self) -> list[dict]:
         if self._sources_chars() <= self.settings.lesson_source_max_chars:
             content = self._all_sources()
         else:
             content = [{"type": "text", "text": "<nota>La fonte integrale è troppo lunga per essere allegata: lavora sull'inventario, che contiene tutti gli elementi con i riferimenti ai passaggi.</nota>"}]
-        return content + [self._json_block("inventario", self.inventory, cache=True)] + self._web_block()
+        return content + [self._json_block("inventario", self.inventory, cache=True)]
 
     def _doc_task(self, kind: str) -> str:
         task = {"lezione": prompts.LESSON_TASK, "guida": prompts.GUIDE_TASK, "brochure": prompts.BROCHURE_TASK}[kind]
@@ -301,7 +246,6 @@ class Steps:
             "inventory": self.step_inventory,
             "inventory_part": self.step_inventory_part,
             "inventory_merge": self.step_inventory_merge,
-            "web": self.step_web,
             "lesson_part": self.step_lesson_part,
             "guide": lambda a: self.step_document("guida"),
             "brochure": lambda a: self.step_document("brochure"),
@@ -331,19 +275,11 @@ class Steps:
         if part is None:
             raise StepError("Segmento non trovato nel piano di elaborazione.")
         ids = set(part["ids"])
-        segments = [p for p in plan["parts"] if p["kind"] == "trascrizione"]
-        if part["kind"] == "trascrizione":
-            passages = [p for p in self.source["transcript"]["passages"] if p["id"] in ids]
-            number = segments.index(part) + 1
-            note = prompts.SEGMENT_NOTE.format(index=number, total=len(segments), first=passages[0]["id"], last=passages[-1]["id"])
-            note = note.replace(f"S{number}-", f"{part['key']}-")
-            content = [self._transcript_block(passages), self._task(prompts.INVENTORY_TASK + "\n\n" + note)]
-        else:
-            source = next(s for s in self.source.get("sources", []) if s["index"] == part["source"])
-            passages = [p for p in source["passages"] if p["id"] in ids]
-            note = (f"Stai analizzando la {part['label']} del documento allegato D{part['source']}. "
-                    f"Usa identificativi con prefisso {part['key']}-.")
-            content = self._source_blocks({part["source"]: passages}) + [self._task(prompts.INVENTORY_TASK + "\n\n" + note)]
+        segments = plan["parts"]
+        passages = [p for p in self.source["transcript"]["passages"] if p["id"] in ids]
+        number = segments.index(part) + 1
+        note = prompts.SEGMENT_NOTE.format(index=number, total=len(segments), first=passages[0]["id"], last=passages[-1]["id"])
+        content = [self._transcript_block(passages), self._task(prompts.INVENTORY_TASK + "\n\n" + note)]
         inventory = self.llm.call_json(prompts.SYSTEM_BASE, content, INVENTORY_SCHEMA, f"inventario {part['label']}",
                                        effort=self.settings.effort_analysis)
         return {"key": part["key"], "inventory": inventory}
@@ -362,43 +298,6 @@ class Steps:
         result = self._with_plan(merged)
         result["detail"] += f" (da {len(partials)} segmenti)"
         return result
-
-    def step_web(self, args: dict) -> dict:
-        inventory = self.inventory
-        claims = [
-            {"id": e.get("id"), "testo": e.get("testo"), "valore": e.get("valore")}
-            for e in inventory.get("elementi", [])
-            if e.get("categoria") in ("numero", "condizione", "costo", "garanzia", "fiscalita", "data", "eccezione")
-        ][:25]
-        content = (self._header() + "\n\n" + prompts.WEB_TASK + "\n\n"
-                   + json.dumps({"prodotti": inventory.get("prodotti", []), "condizioni_da_verificare": claims}, ensure_ascii=False))
-        consulted_at = datetime.now().strftime("%d/%m/%Y %H:%M")
-        try:
-            text, blocks = self.llm.call_web(prompts.SYSTEM_BASE, content, "verifica web")
-        except LLMError as exc:
-            return {"stato": "non_riuscita", "messaggio": exc.user_message, "consultato_il": consulted_at,
-                    "fonti": [], "verifiche": []}
-        sources, errors = consulted_sources(blocks)
-        verifications: list[dict] = []
-        try:
-            parsed = parse_json_text(text)
-            consulted_urls = {s["url"] for s in sources}
-            for index, item in enumerate(parsed.get("verifiche", []) or [], start=1):
-                url = (item.get("fonte_url") or "").strip()
-                esito = item.get("esito", "non_trovata")
-                if esito in ("confermata", "diversa") and url not in consulted_urls:
-                    esito = "non_verificabile"  # la pagina citata non è stata realmente consultata
-                verifications.append({**item, "id": f"W{index}", "esito": esito})
-        except (ValueError, json.JSONDecodeError):
-            verifications = []
-        if not sources:
-            state, message = "non_riuscita", "nessuna fonte consultata" + (f" ({', '.join(errors)})" if errors else "")
-        elif not verifications:
-            state, message = "non_riuscita", "risultato della verifica non leggibile"
-        else:
-            state, message = "eseguita", ""
-        return {"stato": state, "messaggio": message, "consultato_il": consulted_at, "fonti": sources,
-                "verifiche": verifications if state == "eseguita" else []}
 
     def _part_context(self, index: int) -> tuple[list[dict], dict]:
         plan = lesson_plan(self.inventory, self.settings.lesson_part_topics)
@@ -437,8 +336,8 @@ class Steps:
 
     def _shared_with_lesson(self) -> list[dict]:
         lesson = merge_lesson(self.state.get("lesson_parts") or {})
-        return [self._json_block("inventario", self.inventory)] + self._web_block() + [
-            self._json_block("lezione_completa", lesson, cache=True)]
+        return [self._json_block("inventario", self.inventory),
+                self._json_block("lezione_completa", lesson, cache=True)]
 
     def step_document(self, kind: str) -> dict:
         label = "guida di studio" if kind == "guida" else "brochure cliente"
@@ -449,11 +348,6 @@ class Steps:
     # --- controllo -------------------------------------------------------
     def _source_numbers(self) -> set[float]:
         texts = [p["text"] for p in self.source["transcript"]["passages"]]
-        for source in self.source.get("sources", []):
-            texts += [p["text"] for p in source["passages"]]
-        web = self.state.get("web")
-        if web and web.get("stato") == "eseguita":
-            texts.append(json.dumps(web.get("verifiche", []), ensure_ascii=False))
         numbers: set[float] = set()
         for text in texts:
             numbers |= checks.numbers_in(text)
@@ -477,7 +371,6 @@ class Steps:
         auto_issues, _ = self.automatic_issues(docs)
         content = [
             self._json_block("inventario", self.inventory),
-            *self._web_block(),
             self._json_block("lezione_completa", docs["lezione"]),
             self._json_block("guida_di_studio", docs["guida"]),
             self._json_block("brochure_cliente", docs["brochure"]),
@@ -577,35 +470,14 @@ class Steps:
             f"Titolo: {self.final_title}",
             f"Generato il: {datetime.now().strftime('%d/%m/%Y %H:%M')} con il modello {self.settings.model}",
             "",
-            "1. FONTE PRINCIPALE",
+            "1. FONTE (unica fonte usata: la trascrizione)",
             f"- {transcript['name']}: {transcript['words']} parole, {len(passages)} passaggi (T001–T{len(passages):03d}).",
         ]
         if self.signals:
             lines.append("- Segnali rilevati:")
             lines += [f"  · {s}" for s in self.signals]
-        lines += ["", "2. FONTI AGGIUNTIVE"]
-        if self.source.get("sources"):
-            for source in self.source["sources"]:
-                meta = ", ".join(x for x in [source.get("metadata_title"), source.get("metadata_date"),
-                                             f"{source['pages_total']} pagine" if source.get("pages_total") else ""] if x)
-                lines.append(f"- D{source['index']}: {source['name']}" + (f" ({meta})" if meta else ""))
-        else:
-            lines.append("- Nessuna.")
-        lines += ["", "3. VERIFICA WEB"]
-        web = self.state.get("web")
-        if not self.meta.get("web_search"):
-            lines.append("- Non richiesta: nessuna condizione è stata verificata online.")
-        elif not web or web.get("stato") != "eseguita":
-            lines.append(f"- Non riuscita ({(web or {}).get('messaggio', '')}): nessuna condizione è dichiarata verificata.")
-        else:
-            lines.append(f"- Eseguita il {web['consultato_il']}. Documenti consultati:")
-            lines += [f"  · {s.get('titolo') or '(senza titolo)'} — {s['url']}"
-                      + (f" (data pagina: {s['data_pagina']})" if s.get("data_pagina") else "") for s in web["fonti"]]
-            lines.append("- Esiti:")
-            lines += [f"  · [{v['id']}] {v.get('affermazione', '')} → {v['esito']}"
-                      + (f" ({v.get('fonte_url')})" if v.get("fonte_url") else "") for v in web["verifiche"]]
-        lines += ["", "4. COPERTURA"] + [f"- {k.replace('_', ' ')}: {v}" for k, v in coverage.items()]
-        lines += ["", "5. SEGNALAZIONI RESIDUE"]
+        lines += ["", "2. COPERTURA"] + [f"- {k.replace('_', ' ')}: {v}" for k, v in coverage.items()]
+        lines += ["", "3. SEGNALAZIONI RESIDUE"]
         if issues:
             lines += [f"- [{i['gravita']}] {DOC_KIND_LABEL.get(i['documento'], i['documento'])} · {i['posizione']}: "
                       f"{i['problema']} ({i['origine']})" for i in issues]
@@ -613,15 +485,15 @@ class Steps:
             lines.append("- Nessuna.")
         warnings = list(self.state.get("warnings") or []) + extra_warnings
         if warnings:
-            lines += ["", "6. AVVISI"] + [f"- {w}" for w in warnings]
+            lines += ["", "4. AVVISI"] + [f"- {w}" for w in warnings]
         if usage:
             total_in = usage.get("token_input", 0) + usage.get("token_cache_scrittura", 0) + usage.get("token_cache_lettura", 0)
-            lines += ["", "7. UTILIZZO API",
+            lines += ["", "5. UTILIZZO API",
                       f"- Chiamate: {usage.get('chiamate', 0)}; token in ingresso: {total_in}; token in uscita: {usage.get('token_output', 0)}"]
             cost = estimated_cost(usage, self.settings)
             if cost is not None:
                 lines.append(f"- Costo stimato: circa {cost:.2f} USD (stima indicativa sui prezzi di listino)")
-        lines += ["", "8. INDICE DEI PASSAGGI DELLA TRASCRIZIONE (per verificare i riferimenti «Rif. fonte»)", ""]
+        lines += ["", "6. INDICE DEI PASSAGGI DELLA TRASCRIZIONE (per verificare i riferimenti «Rif. fonte»)", ""]
         lines += [f"[{p['id']}] {p['text']}" for p in passages]
         return "\n".join(lines) + "\n"
 
@@ -645,7 +517,7 @@ def _norm(text: str) -> str:
 
 def merge_inventories(partials: list[dict]) -> dict:
     merged: dict = {key: [] for key in ("relatori", "prodotti", "argomenti", "elementi", "termini", "domande_pubblico",
-                                        "criticita", "info_commerciali_interne", "fonti_documentali")}
+                                        "criticita", "info_commerciali_interne")}
     merged.update({"titolo_proposto": "", "tema_generale": "", "data_lezione_rilevata": ""})
     topic_map: dict[str, str] = {}
     seen_elements: dict[str, dict] = {}
@@ -669,7 +541,7 @@ def merge_inventories(partials: list[dict]) -> dict:
                    "riferimenti": list(element.get("riferimenti", []))}
             seen_elements[signature] = new
             merged["elementi"].append(new)
-        for key, name_field in (("relatori", "nome"), ("prodotti", "nome"), ("termini", "termine"), ("fonti_documentali", "id")):
+        for key, name_field in (("relatori", "nome"), ("prodotti", "nome"), ("termini", "termine")):
             names = {_norm(x.get(name_field, "")) for x in merged[key]}
             for item in partial.get(key, []):
                 if _norm(item.get(name_field, "")) not in names:
@@ -699,30 +571,3 @@ def apply_crosscheck(merged: dict, cross: dict) -> None:
                 if element.get("argomento_id") == other_id:
                     element["argomento_id"] = keep["id"]
     merged["argomenti"] = [t for t in merged["argomenti"] if t["id"] in topics]
-
-
-def consulted_sources(blocks: list) -> tuple[list[dict], list[str]]:
-    sources: dict[str, dict] = {}
-    errors: list[str] = []
-    for block in blocks:
-        kind = getattr(block, "type", "")
-        content = getattr(block, "content", None)
-        if kind == "web_search_tool_result":
-            if isinstance(content, list):
-                for result in content:
-                    url = getattr(result, "url", "")
-                    if url:
-                        sources.setdefault(url, {"url": url, "titolo": getattr(result, "title", "") or "",
-                                                 "data_pagina": getattr(result, "page_age", "") or "",
-                                                 "tipo": "risultato di ricerca"})
-            else:
-                errors.append(str(getattr(content, "error_code", "errore")))
-        elif kind == "web_fetch_tool_result":
-            url = getattr(content, "url", "") if content is not None else ""
-            if url and getattr(content, "type", "") == "web_fetch_result":
-                previous = sources.get(url, {})
-                sources[url] = {"url": url, "titolo": previous.get("titolo", ""), "data_pagina": previous.get("data_pagina", ""),
-                                "tipo": "documento letto", "letto_il": getattr(content, "retrieved_at", "") or ""}
-            else:
-                errors.append(str(getattr(content, "error_code", "errore")))
-    return list(sources.values()), errors

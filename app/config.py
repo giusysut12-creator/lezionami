@@ -62,9 +62,6 @@ class Settings:
     step_deadline_seconds: int
     refusal_fallback: bool
     max_output_tokens: int
-    web_search_tool: str
-    web_fetch_tool: str
-    web_search_max_uses: int
     host: str
     port: int
     max_upload_mb: int
@@ -108,9 +105,6 @@ def get_settings() -> Settings:
         step_deadline_seconds=_int("STEP_DEADLINE_SECONDS", 285 if on_vercel else 0),
         refusal_fallback=_bool("CLAUDE_REFUSAL_FALLBACK", True),
         max_output_tokens=_int("CLAUDE_MAX_OUTPUT_TOKENS", 120000),
-        web_search_tool=os.environ.get("WEB_SEARCH_TOOL", "web_search_20260209"),
-        web_fetch_tool=os.environ.get("WEB_FETCH_TOOL", "web_fetch_20260209"),
-        web_search_max_uses=_int("WEB_SEARCH_MAX_USES", 8),
         host=os.environ.get("HOST", "127.0.0.1"),
         port=_int("PORT", 8000),
         # Su Vercel richiesta e risposta di una funzione non possono superare 4,5 MB.

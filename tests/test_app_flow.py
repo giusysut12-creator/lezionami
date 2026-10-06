@@ -19,15 +19,14 @@ from app.orchestrator import StepFailed, run_all
 from tests.conftest import FIXTURES
 
 
-def extract(app_url, path=None, text=None, session=None, sources=None, **fields):
+def extract(app_url, path=None, text=None, session=None, **fields):
     http = session or requests
-    data = {"title": "", "lesson_date": "", "recipient": "", "web_search": "false", **fields}
+    data = {"title": "", "lesson_date": "", "recipient": "", **fields}
     files = []
     if path is not None:
         files.append(("transcript_file", (path.name, path.read_bytes())))
     if text is not None:
         data["transcript_text"] = text
-    files += [("sources", item) for item in (sources or [])]
     return http.post(f"{app_url}/api/extract", data=data, files=files or None, timeout=30)
 
 
@@ -54,9 +53,6 @@ def steps_called(mock_state):
     """Tipo di ogni chiamata ricevuta dal server finto."""
     kinds = []
     for body in mock_state.requests:
-        if body.get("tools"):
-            kinds.append("web")
-            continue
         props = body["output_config"]["format"]["schema"]["properties"]
         text = json.dumps(body["messages"], ensure_ascii=False)
         if "argomenti_duplicati" in props:
@@ -93,6 +89,8 @@ def test_short_transcript_end_to_end(app_url, mock_state):
     bodies = mock_state.requests
     system = bodies[0]["system"][0]["text"]
     assert "Regole di accuratezza" in system and "Garanzia caso morte ≠ garanzia al riscatto" in system
+    assert "Unica fonte: la trascrizione" in system and "conoscenze esterne" in system
+    assert not any(b.get("tools") for b in bodies)  # nessuna ricerca web
     assert all(b["model"] == "claude-opus-5-5" for b in bodies)
     first_user = json.dumps(bodies[0]["messages"], ensure_ascii=False)
     assert "<trascrizione>" in first_user and "Data odierna" in first_user
@@ -215,39 +213,6 @@ def test_fallback_rejected_is_retried_without(app_url, mock_state):
     mock_state.reject_fallbacks = True
     state = process(app_url, FIXTURES / "breve.txt")
     assert state["final"]["files"]
-
-
-def test_web_search_success_lists_consulted_sources(app_url, mock_state):
-    state = process(app_url, FIXTURES / "breve.txt", web_search="true")
-    web = state["web"]
-    assert web["stato"] == "eseguita" and web["consultato_il"]
-    assert [s["url"] for s in web["fonti"]] == ["https://www.esempio-compagnia.it/kid-prodotto-di-prova.pdf"]
-    # Una verifica che cita una pagina mai consultata non viene dichiarata confermata.
-    assert "Penale 2% → non_verificabile" in state["final"]["report"]["text"]
-    web_calls = [b for b in mock_state.requests if b.get("tools")]
-    assert web_calls[0]["tools"][0]["type"] == "web_search_20260209"
-
-
-def test_web_search_failure_does_not_claim_verification(app_url, mock_state):
-    mock_state.web_error = True
-    state = process(app_url, FIXTURES / "breve.txt", web_search="true")
-    assert state["web"]["stato"] == "non_riuscita"
-    generation_prompts = json.dumps([b["messages"] for b in mock_state.requests if not b.get("tools")], ensure_ascii=False)
-    assert "Non dichiarare nulla come verificato online" in generation_prompts
-    assert "Non riuscita" in state["final"]["report"]["text"]
-
-
-def test_additional_source_documents(app_url, mock_state):
-    from tests.test_extract import _image_only_pdf, _text_pdf
-
-    kid = _text_pdf(["KID Orizzonte Famiglia - aggiornato al 1 luglio 2026", "Costi di ingresso: 1,5% di ogni versamento."])
-    res = extract(app_url, FIXTURES / "breve.txt", sources=[("KID.pdf", kid), ("scansione.pdf", _image_only_pdf())])
-    state = res.json()
-    assert any("Fonte aggiuntiva esclusa" in w and "soltanto immagini" in w for w in state["warnings"])
-    run_all(http_call(app_url), state)
-    user = json.dumps(mock_state.requests[0]["messages"], ensure_ascii=False)
-    assert '<fonte_documentale id=\\"D1\\" file=\\"KID.pdf\\"' in user and "[D1-001 p.1]" in user
-    assert "D1: KID.pdf" in state["final"]["report"]["text"]
 
 
 def test_missing_input_rejected(app_url):
