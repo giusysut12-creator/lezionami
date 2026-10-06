@@ -58,6 +58,8 @@ class Settings:
     api_key_configured: bool
     model: str
     effort: str
+    effort_analysis: str
+    step_deadline_seconds: int
     refusal_fallback: bool
     max_output_tokens: int
     web_search_tool: str
@@ -99,7 +101,11 @@ def get_settings() -> Settings:
             os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
         ),
         model=model,
+        # Ragionamento: alto per scrivere i documenti, medio per le fasi di analisi (più rapide).
         effort=os.environ.get("CLAUDE_EFFORT", "high").strip() or "high",
+        effort_analysis=os.environ.get("CLAUDE_EFFORT_ANALYSIS", "medium").strip() or "medium",
+        # Su Vercel ogni passo si ferma da solo prima del limite di 300 secondi.
+        step_deadline_seconds=_int("STEP_DEADLINE_SECONDS", 285 if on_vercel else 0),
         refusal_fallback=_bool("CLAUDE_REFUSAL_FALLBACK", True),
         max_output_tokens=_int("CLAUDE_MAX_OUTPUT_TOKENS", 120000),
         web_search_tool=os.environ.get("WEB_SEARCH_TOOL", "web_search_20260209"),
@@ -110,11 +116,11 @@ def get_settings() -> Settings:
         # Su Vercel richiesta e risposta di una funzione non possono superare 4,5 MB.
         max_upload_mb=_int("MAX_UPLOAD_MB", 4 if on_vercel else 30),
         # Soglie pensate perché ogni chiamata resti entro il tempo massimo di una funzione serverless.
-        single_pass_max_chars=_int("SINGLE_PASS_MAX_CHARS", 30000),
-        segment_max_chars=_int("SEGMENT_MAX_CHARS", 25000),
+        single_pass_max_chars=_int("SINGLE_PASS_MAX_CHARS", 12000),
+        segment_max_chars=_int("SEGMENT_MAX_CHARS", 10000),
         lesson_source_max_chars=_int("LESSON_SOURCE_MAX_CHARS", 600000),
         parallel_requests=max(1, _int("PARALLEL_REQUESTS", 3)),
-        lesson_part_topics=max(2, _int("LESSON_PART_TOPICS", 4)),
+        lesson_part_topics=max(2, _int("LESSON_PART_TOPICS", 3)),
         show_source_refs=_bool("SHOW_SOURCE_REFS", True),
         price_input=price_in,
         price_output=price_out,

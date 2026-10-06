@@ -12,6 +12,8 @@ import logging
 import re
 import threading
 import time
+from concurrent.futures import ThreadPoolExecutor
+from concurrent.futures import TimeoutError as FutureTimeout
 from dataclasses import dataclass, field
 
 import anthropic
@@ -127,9 +129,12 @@ def parse_json_text(text: str) -> dict:
 
 
 class ClaudeClient:
-    def __init__(self, settings: Settings, usage: Usage):
+    def __init__(self, settings: Settings, usage: Usage, deadline: float | None = None):
         self.settings = settings
         self.usage = usage
+        # Istante (time.monotonic) oltre il quale la chiamata viene interrotta, per
+        # chiudere il passo in modo pulito prima del limite della piattaforma serverless.
+        self.deadline = deadline
         self._client: anthropic.Anthropic | None = None
         self._fallback_enabled = settings.refusal_fallback
         self._structured_enabled = True
@@ -145,7 +150,8 @@ class ClaudeClient:
             self._client = anthropic.Anthropic(max_retries=3)
         return self._client
 
-    def _base_params(self, system: str, user_content: str | list, max_tokens: int | None) -> dict:
+    def _base_params(self, system: str, user_content: str | list, max_tokens: int | None,
+                     effort: str | None = None) -> dict:
         params: dict = {
             "model": self.settings.model,
             "max_tokens": max_tokens or self.settings.max_output_tokens,
@@ -153,11 +159,40 @@ class ClaudeClient:
             "messages": [{"role": "user", "content": user_content}],
         }
         output_config: dict = {}
-        if self.settings.effort and not self.settings.model.startswith("claude-haiku"):
-            output_config["effort"] = self.settings.effort
+        effort = effort or self.settings.effort
+        if effort and not self.settings.model.startswith("claude-haiku"):
+            output_config["effort"] = effort
         if output_config:
             params["output_config"] = output_config
         return params
+
+    def _deadline_error(self) -> LLMError:
+        return LLMError(
+            f"La risposta dell'AI non è arrivata entro {self.settings.step_deadline_seconds} secondi, "
+            "il tempo massimo per passo su questo server. Premi «Riprova»; se si ripete, imposta "
+            "CLAUDE_EFFORT=medium oppure riduci SEGMENT_MAX_CHARS nelle variabili d'ambiente.",
+            retryable=True, kind="deadline",
+        )
+
+    def _consume(self, stream):
+        """Legge lo stream; allo scadere del tempo del passo risponde subito con un errore."""
+        if self.deadline is None:
+            return stream.get_final_message()
+        remaining = self.deadline - time.monotonic()
+        if remaining <= 0:
+            raise self._deadline_error()
+        pool = ThreadPoolExecutor(max_workers=1)
+        future = pool.submit(stream.get_final_message)
+        try:
+            return future.result(timeout=remaining)
+        except FutureTimeout:
+            try:  # interrompe la generazione per non pagare token inutili
+                stream.close()
+            except Exception:
+                pass
+            raise self._deadline_error() from None
+        finally:
+            pool.shutdown(wait=False)
 
     def _stream(self, params: dict):
         if self._fallback_enabled:
@@ -165,14 +200,14 @@ class ClaudeClient:
                 with self.client.beta.messages.stream(
                     **params, betas=[FALLBACK_BETA], fallbacks="default"
                 ) as stream:
-                    return stream.get_final_message()
+                    return self._consume(stream)
             except anthropic.BadRequestError as exc:
                 if "fallback" not in str(exc).lower():
                     raise
                 log.warning("fallback lato server non accettato: disattivato per questa sessione")
                 self._fallback_enabled = False
         with self.client.messages.stream(**params) as stream:
-            return stream.get_final_message()
+            return self._consume(stream)
 
     def _check_stop(self, message, label: str) -> None:
         if message.stop_reason == "refusal":
@@ -187,9 +222,9 @@ class ClaudeClient:
             )
 
     def call_json(self, system: str, user_content: str | list, schema: dict, label: str,
-                  max_tokens: int | None = None) -> dict:
+                  max_tokens: int | None = None, effort: str | None = None) -> dict:
         started = time.monotonic()
-        params = self._base_params(system, user_content, max_tokens)
+        params = self._base_params(system, user_content, max_tokens, effort)
         use_structured = self._structured_enabled
         if use_structured:
             params.setdefault("output_config", {})["format"] = {"type": "json_schema", "schema": schema}
@@ -209,7 +244,7 @@ class ClaudeClient:
             if use_structured and ("schema" in text or "output_config" in text or "format" in text):
                 log.warning("output strutturati non accettati (%s): ripiego su JSON da prompt", label)
                 self._structured_enabled = False
-                return self.call_json(system, user_content, schema, label, max_tokens)
+                return self.call_json(system, user_content, schema, label, max_tokens, effort)
             raise friendly_error(exc) from exc
         except LLMError:
             raise
@@ -241,7 +276,7 @@ class ClaudeClient:
             {"type": self.settings.web_fetch_tool, "name": "web_fetch",
              "max_uses": self.settings.web_search_max_uses},
         ]
-        params = self._base_params(system, user_content, 32000)
+        params = self._base_params(system, user_content, 32000, self.settings.effort_analysis)
         params["tools"] = tools
         messages = params["messages"]
         all_blocks: list = []

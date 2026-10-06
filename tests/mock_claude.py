@@ -30,6 +30,7 @@ class MockState:
         self.fail_times = 0                     # quante volte fallire (-1 = sempre)
         self.web_error = False
         self.reject_fallbacks = False
+        self.delay_seconds = 0                  # attesa prima della risposta (simula un modello lento)
 
 
 STATE = MockState()
@@ -217,6 +218,9 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("content-type", "text/event-stream")
         self.send_header("cache-control", "no-cache")
         self.end_headers()
+        if STATE.delay_seconds:
+            import time
+            time.sleep(STATE.delay_seconds)
 
         def event(name: str, payload: dict):
             self.wfile.write(f"event: {name}\ndata: {json.dumps(payload, ensure_ascii=False)}\n\n".encode())

@@ -16,6 +16,7 @@ import io
 import json
 import math
 import re
+import time
 from datetime import datetime
 
 from . import checks, prompts
@@ -173,7 +174,8 @@ class Steps:
         self.meta = self.state.get("meta") or {}
         self.source = self.state.get("source") or {}
         self.usage = Usage()
-        self.llm = ClaudeClient(settings, self.usage)
+        deadline = time.monotonic() + settings.step_deadline_seconds if settings.step_deadline_seconds else None
+        self.llm = ClaudeClient(settings, self.usage, deadline)
         if not self.source.get("transcript"):
             raise StepError("Dati della trascrizione mancanti: ricomincia dal caricamento del file.")
 
@@ -319,7 +321,8 @@ class Steps:
 
     def step_inventory(self, args: dict) -> dict:
         content = self._all_sources() + [self._task(prompts.INVENTORY_TASK)]
-        inventory = self.llm.call_json(prompts.SYSTEM_BASE, content, INVENTORY_SCHEMA, "inventario")
+        inventory = self.llm.call_json(prompts.SYSTEM_BASE, content, INVENTORY_SCHEMA, "inventario",
+                                       effort=self.settings.effort_analysis)
         return self._with_plan(inventory)
 
     def step_inventory_part(self, args: dict) -> dict:
@@ -341,7 +344,8 @@ class Steps:
             note = (f"Stai analizzando la {part['label']} del documento allegato D{part['source']}. "
                     f"Usa identificativi con prefisso {part['key']}-.")
             content = self._source_blocks({part["source"]: passages}) + [self._task(prompts.INVENTORY_TASK + "\n\n" + note)]
-        inventory = self.llm.call_json(prompts.SYSTEM_BASE, content, INVENTORY_SCHEMA, f"inventario {part['label']}")
+        inventory = self.llm.call_json(prompts.SYSTEM_BASE, content, INVENTORY_SCHEMA, f"inventario {part['label']}",
+                                       effort=self.settings.effort_analysis)
         return {"key": part["key"], "inventory": inventory}
 
     def step_inventory_merge(self, args: dict) -> dict:
@@ -352,7 +356,8 @@ class Steps:
             raise StepError(f"Mancano gli inventari dei segmenti: {', '.join(missing)}.")
         merged = merge_inventories([partials[p["key"]] for p in plan["parts"]])
         content = [self._json_block("inventario_unito", merged), self._task(prompts.CROSSCHECK_TASK)]
-        cross = self.llm.call_json(prompts.SYSTEM_BASE, content, CROSSCHECK_SCHEMA, "controllo incrociato dei segmenti")
+        cross = self.llm.call_json(prompts.SYSTEM_BASE, content, CROSSCHECK_SCHEMA, "controllo incrociato dei segmenti",
+                                   effort=self.settings.effort_analysis)
         apply_crosscheck(merged, cross)
         result = self._with_plan(merged)
         result["detail"] += f" (da {len(partials)} segmenti)"
@@ -479,7 +484,8 @@ class Steps:
             self._json_block("segnalazioni_automatiche", auto_issues),
             self._task(prompts.CHECK_TASK),
         ]
-        ai_check = self.llm.call_json(prompts.SYSTEM_BASE, content, CHECK_SCHEMA, "controllo di coerenza")
+        ai_check = self.llm.call_json(prompts.SYSTEM_BASE, content, CHECK_SCHEMA, "controllo di coerenza",
+                                      effort=self.settings.effort_analysis)
         ai_issues = [{**i, "origine": "controllo AI"} for i in ai_check.get("problemi", [])]
         for missing in ai_check.get("argomenti_non_coperti", []) or []:
             ai_issues.append({"gravita": "media", "documento": "lezione", "posizione": "copertura",

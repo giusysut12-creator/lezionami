@@ -46,7 +46,7 @@ Su Vercel ogni richiesta ha un tempo massimo e il server non conserva memoria tr
 ### Limiti di Vercel da conoscere
 | Limite | Effetto | Rimedio |
 |---|---|---|
-| 300 secondi per richiesta (piano Hobby) | Se un passo è più lungo compare un errore «tempo massimo». | Premi *Riprova*; se si ripete, imposta `CLAUDE_EFFORT=medium`, oppure con il piano Pro alza `maxDuration` in `vercel.json` (fino a 800). |
+| 300 secondi per richiesta (piano Hobby) | Ogni passo si ferma da solo a 285 secondi con un errore che indica il tempo trascorso. | Premi *Riprova*; se si ripete, imposta `CLAUDE_EFFORT=medium` o riduci `SEGMENT_MAX_CHARS`, oppure con il piano Pro alza `maxDuration` in `vercel.json` (fino a 800) e `STEP_DEADLINE_SECONDS`. Se l'errore compare dopo circa 60 secondi, Fluid Compute non è attivo. |
 | 4,5 MB per richiesta | File caricati in totale fino a 4 MB. | Per KID e set informativi molto pesanti, caricare solo le pagine utili o la versione testuale. |
 | Piano Hobby solo per uso personale non commerciale | Termini d'uso di Vercel. | Per uso aziendale serve il piano Pro. |
 
@@ -106,10 +106,12 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 | `ANTHROPIC_API_KEY` | – | Obbligatoria. Resta sul server: non arriva mai al browser né nei log. |
 | `APP_PASSWORD` | – | Obbligatoria online. Cambiandola, tutte le sessioni aperte decadono. |
 | `CLAUDE_MODEL` | `claude-opus-5-5` | `claude-sonnet-5-5` costa circa la metà. |
-| `CLAUDE_EFFORT` | `high` | `low`/`medium`/`high`/`xhigh`/`max`: più alto = più accurato, più lento e più costoso. |
+| `CLAUDE_EFFORT` | `high` | Ragionamento per la scrittura dei documenti: `low`/`medium`/`high`/`xhigh`/`max` (più alto = più accurato, lento e costoso). |
+| `CLAUDE_EFFORT_ANALYSIS` | `medium` | Ragionamento per inventario e controlli (fasi di analisi, più rapide). |
+| `STEP_DEADLINE_SECONDS` | 285 su Vercel, altrimenti nessuno | Oltre questo tempo un passo si ferma con un errore chiaro invece di essere interrotto dalla piattaforma. |
 | `CLAUDE_REFUSAL_FALLBACK` | `true` | Se il modello rifiuta una richiesta per i suoi filtri di sicurezza, l'API la ripete su un modello alternativo. |
-| `SINGLE_PASS_MAX_CHARS` / `SEGMENT_MAX_CHARS` | 30000 / 25000 | Soglie della segmentazione. |
-| `LESSON_PART_TOPICS` | 4 | Argomenti per ciascuna parte della lezione completa. |
+| `SINGLE_PASS_MAX_CHARS` / `SEGMENT_MAX_CHARS` | 12000 / 10000 | Soglie della segmentazione: segmenti piccoli, analizzati in parallelo, restano entro i limiti di tempo di Vercel. |
+| `LESSON_PART_TOPICS` | 3 | Argomenti per ciascuna parte della lezione completa. |
 | `SHOW_SOURCE_REFS` | `true` | Riferimenti `Rif. fonte: T012…` nella lezione, verificabili con l'indice dei passaggi nel report. |
 | `SESSION_HOURS` | 12 | Durata dell'accesso. |
 
@@ -133,7 +135,7 @@ Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $
 
 ## 8. Verifiche eseguite e prove ancora da fare
 
-**Eseguite senza chiave API** (`python -m pytest`, 47 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
+**Eseguite senza chiave API** (`python -m pytest`, 49 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
 
 - trascrizione breve, incollata o da file; tre PDF, report e nomi dei file;
 - trascrizione lunga (145.000 caratteri): 6 segmenti, unione, controllo incrociato, lezione scritta in più parti con tutti gli argomenti, parte finale presente;

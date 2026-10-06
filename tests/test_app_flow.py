@@ -260,3 +260,28 @@ def test_step_with_missing_state_is_rejected(app_url):
     assert res.status_code == 400 and "ricomincia" in res.json()["detail"]
     res = requests.post(f"{app_url}/api/step", json={"step": "sconosciuto", "args": {}, "state": {"source": {"transcript": {"passages": []}}}}, timeout=10)
     assert res.status_code == 400
+
+
+def test_effort_per_phase(app_url, mock_state):
+    process(app_url, FIXTURES / "breve.txt")
+    kinds = steps_called(mock_state)
+    efforts = {(k, b["output_config"].get("effort")) for k, b in zip(kinds, mock_state.requests)}
+    assert ("inventory", "medium") in efforts and ("check", "medium") in efforts
+    assert ("document", "high") in efforts and ("document", "medium") not in efforts
+
+
+def test_step_deadline_returns_clear_error(app_url, mock_state):
+    import time
+
+    os.environ["STEP_DEADLINE_SECONDS"] = "2"
+    mock_state.delay_seconds = 6
+    try:
+        state = extract(app_url, FIXTURES / "breve.txt").json()
+        started = time.monotonic()
+        with pytest.raises(StepFailed) as info:
+            run_all(http_call(app_url), state)
+        elapsed = time.monotonic() - started
+    finally:
+        os.environ.pop("STEP_DEADLINE_SECONDS")
+    assert info.value.retryable and "entro 2 secondi" in info.value.detail
+    assert elapsed < 5

@@ -164,16 +164,22 @@ class StepError extends Error {
   }
 }
 
-async function errorFrom(res) {
+async function errorFrom(res, seconds) {
   const data = await res.json().catch(() => null);
   if (data && data.detail) return new StepError(data.detail, data.retryable !== false && res.status !== 422);
-  if (res.status === 504) return new StepError("Il passo ha superato il tempo massimo consentito dal server (su Vercel Hobby 300 secondi). Premi «Riprova»; se si ripete, imposta CLAUDE_EFFORT=medium oppure aumenta maxDuration in vercel.json con un piano Pro.");
+  if (res.status === 504) {
+    if (seconds < 75) {
+      return new StepError(`Il server ha interrotto il passo dopo ${seconds} secondi: il limite attivo sembra di 60 secondi. Su Vercel attiva Fluid Compute (Settings → Functions), poi rifai il deploy e premi «Riprova».`);
+    }
+    return new StepError(`Il passo ha superato il tempo massimo consentito dal server (interrotto dopo ${seconds} secondi). Premi «Riprova»; se si ripete, imposta CLAUDE_EFFORT=medium oppure, con un piano Pro, aumenta maxDuration in vercel.json.`);
+  }
   if (res.status === 413) return new StepError("I dati inviati superano il limite di dimensione del server (4,5 MB su Vercel). Riduci o togli le fonti aggiuntive.", false);
-  return new StepError(`Errore del server (codice ${res.status}). Premi «Riprova».`);
+  return new StepError(`Errore del server (codice ${res.status}, dopo ${seconds} secondi). Premi «Riprova».`);
 }
 
 async function post(url, body, isJson) {
   let res;
+  const started = Date.now();
   try {
     res = await fetch(url, isJson
       ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }
@@ -181,7 +187,7 @@ async function post(url, body, isJson) {
   } catch (err) {
     throw new StepError("Connessione al server interrotta. Controlla la rete e premi «Riprova».");
   }
-  if (!res.ok) throw await errorFrom(res);
+  if (!res.ok) throw await errorFrom(res, Math.round((Date.now() - started) / 1000));
   return res.json();
 }
 
