@@ -5,24 +5,21 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Accesso · Lezionami</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
-  <header class="topbar">
-    <div class="wrap topbar-inner">
-      <div class="brand">
-        <img src="/static/favicon.svg" alt="" width="30" height="30">
-        <div>
-          <strong>Lezionami</strong>
-          <span>Da trascrizione a lezione, guida e brochure</span>
-        </div>
-      </div>
-    </div>
-  </header>
+  <div class="backdrop" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div></div>
   <main class="wrap login-wrap">
+    <div class="login-art">
+      <img src="/static/illustrazione.svg" alt="Una ragazza seduta a gambe incrociate legge con calma" width="360" height="320">
+    </div>
     <form class="card login-card" id="loginForm">
-      <div class="card-head"><span class="step">🔒</span><h2>Accesso riservato</h2></div>
-      <p class="muted">Inserisci la password per usare l'applicazione.</p>
+      <p class="eyebrow">Lezionami</p>
+      <h1 class="login-title">Accedi</h1>
+      <p class="muted">Inserisci la password per entrare.</p>
       <label class="field">
         <span>Password</span>
         <input type="password" name="password" id="password" autocomplete="current-password" required autofocus>

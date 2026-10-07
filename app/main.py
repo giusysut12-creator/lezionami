@@ -34,13 +34,13 @@ STATIC_DIR = APP_DIR / "static"
 # Versione dei file dell'interfaccia: cambia a ogni modifica e obbliga browser e CDN
 # a scaricare i file aggiornati (i file statici possono restare in cache a lungo).
 STATIC_VERSION = hashlib.sha256(b"".join(
-    (STATIC_DIR / name).read_bytes() for name in ("app.js", "style.css", "login.js", "index.html", "login.html")
+    (STATIC_DIR / name).read_bytes() for name in ("app.js", "style.css", "login.js", "index.html", "login.html", "illustrazione.svg")
 )).hexdigest()[:8]
 
 
 def _page(name: str) -> HTMLResponse:
     html = (STATIC_DIR / name).read_text(encoding="utf-8")
-    for asset in ("app.js", "style.css", "login.js"):
+    for asset in ("app.js", "style.css", "login.js", "illustrazione.svg"):
         html = html.replace(f'/static/{asset}"', f'/static/{asset}?v={STATIC_VERSION}"')
     return HTMLResponse(html.replace("{{VERSIONE}}", STATIC_VERSION))
 PUBLIC_PATHS = ("/login", "/api/login", "/healthz", "/static/")

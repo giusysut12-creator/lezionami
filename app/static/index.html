@@ -5,17 +5,18 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lezionami · Trascrizione in tre PDF</title>
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Marcellus&family=Outfit:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  <div class="backdrop" aria-hidden="true"><div class="blob blob-a"></div><div class="blob blob-b"></div></div>
   <header class="topbar">
     <div class="wrap topbar-inner">
       <div class="brand">
-        <img src="/static/favicon.svg" alt="" width="30" height="30">
-        <div>
-          <strong>Lezionami</strong>
-          <span>Da trascrizione a lezione, guida e brochure</span>
-        </div>
+        <img src="/static/favicon.svg" alt="" width="34" height="34">
+        <strong>Lezionami</strong>
       </div>
       <div class="top-actions">
         <span class="model-chip" id="modelChip" hidden></span>
@@ -27,12 +28,17 @@
   <main class="wrap">
     <div class="banner banner-warn" id="keyBanner" hidden>
       <strong>Chiave API non configurata.</strong>
-      Copia il file <code>.env.example</code> in <code>.env</code>, inserisci la tua <code>ANTHROPIC_API_KEY</code> e riavvia l'applicazione. Senza chiave l'elaborazione non può partire.
+      Inserisci la variabile <code>ANTHROPIC_API_KEY</code> nelle impostazioni del server e rifai il deploy. Senza chiave l'elaborazione non può partire.
     </div>
 
-    <section class="intro">
-      <h1>Trasforma una trascrizione in tre PDF</h1>
-      <p>Carica la trascrizione di una lezione o di un webinar: otterrai una <b>lezione completa</b>, una <b>guida di studio</b> e una <b>brochure per il cliente</b>, coerenti tra loro. I documenti si basano <b>solo su quanto detto nella trascrizione</b>: nessuna informazione viene aggiunta da altre fonti.</p>
+    <section class="hero">
+      <div class="hero-text">
+        <p class="eyebrow">Studio sereno</p>
+        <h1>Dalla lezione<br>ai tuoi PDF, con calma.</h1>
+        <p>Carica la trascrizione: otterrai una <b>lezione completa</b>, una <b>guida di studio</b> e una <b>brochure per il cliente</b>, coerenti tra loro. Tutto si basa <b>solo su quanto detto nella trascrizione</b>.</p>
+        <a class="btn btn-primary hero-cta" href="#jobForm">Inizia</a>
+      </div>
+      <img class="hero-art" src="/static/illustrazione.svg" alt="Una ragazza seduta a gambe incrociate legge con calma accanto a una pianta e a un gatto" width="360" height="320">
     </section>
 
     <form id="jobForm" novalidate>

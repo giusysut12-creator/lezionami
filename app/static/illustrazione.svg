@@ -1,0 +1,74 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 320" role="img" aria-label="Una ragazza seduta a gambe incrociate legge con calma, accanto a una pianta e a un gatto">
+  <!-- sfondo morbido -->
+  <circle cx="180" cy="160" r="140" fill="#E9E1D6"/>
+  <circle cx="300" cy="62" r="7" fill="#E7A56F"/>
+  <circle cx="52" cy="92" r="4" fill="#2D1E2F"/>
+  <path d="M286 40 q10 -14 22 -4" fill="none" stroke="#B5532C" stroke-width="3" stroke-linecap="round"/>
+
+  <!-- pianta -->
+  <path d="M58 248 h40 l-6 34 h-28 z" fill="#B5532C"/>
+  <path d="M78 250 C70 220 52 206 40 196" fill="none" stroke="#2F3B2F" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M78 250 C80 215 92 196 104 184" fill="none" stroke="#2F3B2F" stroke-width="2.4" stroke-linecap="round"/>
+  <path d="M78 250 C77 228 76 210 74 192" fill="none" stroke="#2F3B2F" stroke-width="2.4" stroke-linecap="round"/>
+  <ellipse cx="44" cy="200" rx="12" ry="5" transform="rotate(35 44 200)" fill="#2F3B2F"/>
+  <ellipse cx="56" cy="214" rx="11" ry="4.5" transform="rotate(-25 56 214)" fill="#3D4A3A"/>
+  <ellipse cx="100" cy="188" rx="12" ry="5" transform="rotate(-40 100 188)" fill="#2F3B2F"/>
+  <ellipse cx="92" cy="208" rx="11" ry="4.5" transform="rotate(25 92 208)" fill="#3D4A3A"/>
+  <ellipse cx="74" cy="194" rx="5" ry="11" fill="#2F3B2F"/>
+  <ellipse cx="70" cy="226" rx="10" ry="4" transform="rotate(-30 70 226)" fill="#2F3B2F"/>
+
+  <!-- pavimento -->
+  <path d="M30 284 H330" stroke="#2D1E2F" stroke-width="2.4" stroke-linecap="round"/>
+
+  <!-- gambe incrociate -->
+  <path d="M112 270 C120 236 160 232 182 246 C204 232 244 236 252 270 C246 284 220 286 182 278 C144 286 118 284 112 270 Z" fill="#D9B48F"/>
+  <path d="M140 262 C158 254 176 258 186 268" fill="none" stroke="#B88C63" stroke-width="2" stroke-linecap="round"/>
+  <path d="M224 262 C206 254 190 258 180 268" fill="none" stroke="#B88C63" stroke-width="2" stroke-linecap="round"/>
+  <!-- piedi -->
+  <ellipse cx="128" cy="274" rx="13" ry="6" fill="#2D1E2F"/>
+  <ellipse cx="238" cy="274" rx="13" ry="6" fill="#2D1E2F"/>
+
+  <!-- busto: maglia e giacca -->
+  <path d="M152 150 C160 140 204 140 212 150 L222 240 C200 252 164 252 142 240 Z" fill="#B5532C"/>
+  <path d="M146 152 C136 170 132 210 136 244 L162 248 L170 162 Z" fill="#FBF6EF" stroke="#2D1E2F" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M218 152 C228 170 232 210 228 244 L202 248 L194 162 Z" fill="#FBF6EF" stroke="#2D1E2F" stroke-width="1.6" stroke-linejoin="round"/>
+  <path d="M146 152 C152 146 162 144 170 146 L176 170 L160 178 Z" fill="#E6D8C6"/>
+  <path d="M218 152 C212 146 202 144 194 146 L188 170 L204 178 Z" fill="#E6D8C6"/>
+  <!-- collo alto -->
+  <rect x="170" y="128" width="24" height="20" rx="8" fill="#B5532C"/>
+
+  <!-- braccia -->
+  <path d="M140 160 C126 190 130 222 160 232" fill="none" stroke="#2D1E2F" stroke-width="21" stroke-linecap="round"/>
+  <path d="M224 160 C238 190 234 222 204 232" fill="none" stroke="#2D1E2F" stroke-width="21" stroke-linecap="round"/>
+  <path d="M140 160 C126 190 130 222 160 232" fill="none" stroke="#FBF6EF" stroke-width="17.6" stroke-linecap="round"/>
+  <path d="M224 160 C238 190 234 222 204 232" fill="none" stroke="#FBF6EF" stroke-width="17.6" stroke-linecap="round"/>
+  <!-- libro aperto -->
+  <path d="M150 222 L182 230 L214 222 L212 246 L182 254 L152 246 Z" fill="#FFFFFF" stroke="#2D1E2F" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M182 230 V254" stroke="#2D1E2F" stroke-width="2"/>
+  <path d="M160 232 L176 236 M160 238 L176 242 M188 236 L204 232 M188 242 L204 238" stroke="#C9B9A6" stroke-width="1.6" stroke-linecap="round"/>
+  <!-- mani -->
+  <circle cx="156" cy="234" r="7" fill="#F2C7A5"/>
+  <circle cx="208" cy="234" r="7" fill="#F2C7A5"/>
+
+  <!-- testa -->
+  <path d="M146 92 C146 58 218 58 218 92 L220 132 C214 140 204 136 200 128 L164 128 C160 136 150 140 144 132 Z" fill="#1F1720"/>
+  <ellipse cx="182" cy="104" rx="26" ry="29" fill="#F2C7A5"/>
+  <path d="M154 96 C156 70 208 66 212 94 C200 86 186 80 170 84 C164 90 158 94 154 96 Z" fill="#1F1720"/>
+  <!-- occhi chiusi, guance, sorriso -->
+  <path d="M166 106 q6 5 12 0" fill="none" stroke="#2D1E2F" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M188 106 q6 5 12 0" fill="none" stroke="#2D1E2F" stroke-width="2.2" stroke-linecap="round"/>
+  <circle cx="164" cy="116" r="5" fill="#E79B7F" opacity=".7"/>
+  <circle cx="202" cy="116" r="5" fill="#E79B7F" opacity=".7"/>
+  <path d="M176 121 q6 4 12 0" fill="none" stroke="#2D1E2F" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- gatto -->
+  <path d="M268 282 C262 250 270 226 290 222 C312 222 318 252 312 282 Z" fill="#FFFFFF" stroke="#2D1E2F" stroke-width="2"/>
+  <path d="M296 236 C306 238 312 250 312 262 L300 262 C300 252 298 244 296 236 Z" fill="#2D1E2F"/>
+  <path d="M276 210 L280 194 L290 204 Z" fill="#FFFFFF" stroke="#2D1E2F" stroke-width="2" stroke-linejoin="round"/>
+  <path d="M302 210 L300 194 L290 204 Z" fill="#2D1E2F" stroke="#2D1E2F" stroke-width="2" stroke-linejoin="round"/>
+  <ellipse cx="289" cy="216" rx="17" ry="14" fill="#FFFFFF" stroke="#2D1E2F" stroke-width="2"/>
+  <path d="M290 203 C300 204 306 212 305 222 C298 218 294 212 290 203 Z" fill="#2D1E2F"/>
+  <path d="M280 216 q3 3 6 0 M292 216 q3 3 6 0" fill="none" stroke="#2D1E2F" stroke-width="1.8" stroke-linecap="round"/>
+  <circle cx="279" cy="222" r="2.5" fill="#E79B7F" opacity=".8"/>
+  <path d="M312 276 C332 274 334 254 322 250" fill="none" stroke="#2D1E2F" stroke-width="5" stroke-linecap="round"/>
+</svg>
