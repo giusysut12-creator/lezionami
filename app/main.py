@@ -6,12 +6,13 @@ i dati necessari e riceve il risultato. Su Vercel l'app è esposta da index.py.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import time
 from typing import Annotated, Any
 
 from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, Response
+from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
 
 from . import auth
@@ -30,6 +31,18 @@ log = logging.getLogger("lezionami")
 
 app = FastAPI(title="Lezionami", docs_url=None, redoc_url=None, openapi_url=None)
 STATIC_DIR = APP_DIR / "static"
+# Versione dei file dell'interfaccia: cambia a ogni modifica e obbliga browser e CDN
+# a scaricare i file aggiornati (i file statici possono restare in cache a lungo).
+STATIC_VERSION = hashlib.sha256(b"".join(
+    (STATIC_DIR / name).read_bytes() for name in ("app.js", "style.css", "login.js", "index.html", "login.html")
+)).hexdigest()[:8]
+
+
+def _page(name: str) -> HTMLResponse:
+    html = (STATIC_DIR / name).read_text(encoding="utf-8")
+    for asset in ("app.js", "style.css", "login.js"):
+        html = html.replace(f'/static/{asset}"', f'/static/{asset}?v={STATIC_VERSION}"')
+    return HTMLResponse(html.replace("{{VERSIONE}}", STATIC_VERSION))
 PUBLIC_PATHS = ("/login", "/api/login", "/healthz", "/static/")
 
 
@@ -61,19 +74,21 @@ async def security_headers(request, call_next):
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "no-referrer"
     response.headers["X-Frame-Options"] = "DENY"
-    if not request.url.path.startswith("/static/"):
+    if request.url.path.startswith("/static/"):
+        response.headers["Cache-Control"] = "no-cache"
+    else:
         response.headers["Cache-Control"] = "no-store"
     return response
 
 
 @app.get("/")
-def index() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+def index() -> HTMLResponse:
+    return _page("index.html")
 
 
 @app.get("/healthz")
 def healthz() -> dict:
-    return {"ok": True}
+    return {"ok": True, "versione": STATIC_VERSION}
 
 
 @app.get("/login", response_model=None)
@@ -81,7 +96,7 @@ def login_page(request: Request):
     settings = get_settings()
     if not settings.auth_enabled or auth.valid_token(settings, request.cookies.get(auth.COOKIE_NAME)):
         return RedirectResponse("/", status_code=303)
-    return FileResponse(STATIC_DIR / "login.html")
+    return _page("login.html")
 
 
 @app.post("/api/login")

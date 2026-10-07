@@ -187,3 +187,4 @@ textarea:focus, input[type=text]:focus { outline: none; border-color: var(--acce
 .top-actions { display: flex; align-items: center; gap: 8px; }
 .logout { border: 1px solid #CFCDF2; background: #fff; color: var(--accent-dark); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; cursor: pointer; }
 .logout:hover { background: var(--accent-faint); }
+.version { display: block; margin-top: 6px; opacity: .7; }

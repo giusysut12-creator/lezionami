@@ -104,3 +104,11 @@ def test_lockout_after_repeated_failures(online):
 
 def test_local_mode_needs_no_password(app_url):
     assert requests.get(f"{app_url}/api/config", timeout=10).json()["auth_enabled"] is False
+
+
+def test_assets_are_versioned(app_url):
+    html = requests.get(f"{app_url}/", timeout=10).text
+    version = requests.get(f"{app_url}/healthz", timeout=10).json()["versione"]
+    assert f'/static/app.js?v={version}"' in html and f'/static/style.css?v={version}"' in html
+    assert f"Versione {version}" in html and "{{VERSIONE}}" not in html
+    assert "Verifica su fonti ufficiali" not in requests.get(f"{app_url}/static/app.js?v={version}", timeout=10).text
