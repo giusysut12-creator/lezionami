@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -53,6 +53,9 @@ KNOWN_PRICES = {
 }
 
 
+QUALITY_LEVELS = ("economica", "massima")
+
+
 @dataclass
 class Settings:
     api_key_configured: bool
@@ -78,6 +81,8 @@ class Settings:
     session_hours: int
     public_mode: bool
     on_vercel: bool
+    model_economy: str
+    effort_economy: str
 
     @property
     def auth_enabled(self) -> bool:
@@ -125,7 +130,19 @@ def get_settings() -> Settings:
         public_mode=on_vercel or bool(os.environ.get("RENDER"))
         or os.environ.get("HOST", "127.0.0.1").strip() not in ("127.0.0.1", "localhost", "::1"),
         on_vercel=on_vercel,
+        # Modalità «economica»: modello più conveniente e ragionamento medio.
+        model_economy=os.environ.get("CLAUDE_MODEL_ECONOMICO", "claude-sonnet-5-5").strip() or "claude-sonnet-5-5",
+        effort_economy=os.environ.get("CLAUDE_EFFORT_ECONOMICO", "medium").strip() or "medium",
     )
+
+
+def for_quality(settings: Settings, quality: str) -> Settings:
+    """Impostazioni effettive per la modalità scelta dall'utente."""
+    if quality != "economica":
+        return settings
+    price_in, price_out = KNOWN_PRICES.get(settings.model_economy, (None, None))
+    return replace(settings, model=settings.model_economy, effort=settings.effort_economy,
+                   effort_analysis=settings.effort_economy, price_input=price_in, price_output=price_out)
 
 
 def _derived_secret(app_password: str) -> str:

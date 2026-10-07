@@ -20,7 +20,7 @@ import time
 from datetime import datetime
 
 from . import checks, prompts
-from .config import Settings
+from .config import QUALITY_LEVELS, Settings, for_quality
 from .extract import (
     build_transcript_passages, detect_issues, extract_file, from_pasted_text, segment_passages,
 )
@@ -59,6 +59,7 @@ def _passages_dicts(passages) -> list[dict]:
 
 
 def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pasted_text: str, meta: dict) -> dict:
+    quality = meta.get("quality") if meta.get("quality") in QUALITY_LEVELS else "economica"
     """Estrae il testo e prepara lo stato iniziale. Solleva ExtractionError."""
     if transcript is not None:
         doc = extract_file(transcript[0], transcript[1], "trascrizione")
@@ -83,6 +84,7 @@ def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pas
             "title": (meta.get("title") or "").strip()[:150],
             "lesson_date": (meta.get("lesson_date") or "").strip()[:60],
             "recipient": (meta.get("recipient") or "").strip()[:200],
+            "quality": quality,
             "today": italian_date(datetime.now()),
         },
         "source": {
@@ -143,9 +145,11 @@ def merge_lesson(parts: dict) -> dict:
 
 class Steps:
     def __init__(self, settings: Settings, state: dict):
-        self.settings = settings
         self.state = state or {}
         self.meta = self.state.get("meta") or {}
+        self.quality = self.meta.get("quality", "massima")
+        settings = for_quality(settings, self.quality)
+        self.settings = settings
         self.source = self.state.get("source") or {}
         self.usage = Usage()
         deadline = time.monotonic() + settings.step_deadline_seconds if settings.step_deadline_seconds else None
@@ -256,7 +260,7 @@ class Steps:
         if step not in handlers:
             raise StepError(f"Passo sconosciuto: {step}")
         result = handlers[step](args or {})
-        return {"result": result, "usage": self.usage.as_dict()}
+        return {"result": result, "usage": self.usage.as_dict(), "model": self.settings.model}
 
     def _with_plan(self, inventory: dict) -> dict:
         return {"inventory": inventory, "lesson_plan": lesson_plan(inventory, self.settings.lesson_part_topics),
@@ -384,7 +388,9 @@ class Steps:
             ai_issues.append({"gravita": "media", "documento": "lezione", "posizione": "copertura",
                               "problema": f"Argomento non coperto: {missing}",
                               "correzione": "Aggiungere la trattazione dell'argomento.", "origine": "controllo AI"})
-        to_fix = {kind: [i for i in ai_issues + auto_issues if i["documento"] == kind and i["gravita"] in ("alta", "media")]
+        # In modalità economica si revisionano solo i documenti con errori gravi.
+        severities = ("alta",) if self.quality == "economica" else ("alta", "media")
+        to_fix = {kind: [i for i in ai_issues + auto_issues if i["documento"] == kind and i["gravita"] in severities]
                   for kind in DOC_KINDS}
         fix_count = sum(len(v) for v in to_fix.values())
         return {"ai_issues": ai_issues, "to_fix": to_fix,
@@ -460,6 +466,7 @@ class Steps:
             "warnings": warnings,
             "detail": ", ".join(f"{f['label']}: {f['pages']} pag." for f in files),
             "cost_usd": round(cost, 3) if cost is not None else None,
+            "model": self.settings.model,
         }
 
     def report(self, issues: list[dict], coverage: dict, extra_warnings: list[str], usage: dict) -> str:

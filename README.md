@@ -27,7 +27,7 @@ I PDF si scaricano singolarmente o in un unico ZIP, insieme a un report di verif
    |---|---|
    | `ANTHROPIC_API_KEY` | la tua chiave `sk-ant-…` |
    | `APP_PASSWORD` | una password lunga da dare solo a chi deve usare l'app |
-   | `CLAUDE_MODEL` *(facoltativo)* | `claude-opus-5-5` (predefinito) oppure `claude-sonnet-5-5`, più economico |
+   | `CLAUDE_MODEL` *(facoltativo)* | modello della modalità «massima qualità», predefinito `claude-opus-5-5` (la modalità «economica» usa `claude-sonnet-5-5`) |
 
    Senza `APP_PASSWORD` l'app online non si apre: mostra un messaggio di configurazione incompleta, così nessuno può consumare il tuo credito.
 4. Premi **Deploy**. Al termine apri l'indirizzo `https://….vercel.app`: compare la pagina di accesso.
@@ -105,7 +105,8 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 |---|---|---|
 | `ANTHROPIC_API_KEY` | – | Obbligatoria. Resta sul server: non arriva mai al browser né nei log. |
 | `APP_PASSWORD` | – | Obbligatoria online. Cambiandola, tutte le sessioni aperte decadono. |
-| `CLAUDE_MODEL` | `claude-opus-5-5` | `claude-sonnet-5-5` costa circa la metà. |
+| `CLAUDE_MODEL` | `claude-opus-5-5` | Modello della modalità «massima qualità». |
+| `CLAUDE_MODEL_ECONOMICO` / `CLAUDE_EFFORT_ECONOMICO` | `claude-sonnet-5-5` / `medium` | Modello e ragionamento della modalità «economica». |
 | `CLAUDE_EFFORT` | `high` | Ragionamento per la scrittura dei documenti: `low`/`medium`/`high`/`xhigh`/`max` (più alto = più accurato, lento e costoso). |
 | `CLAUDE_EFFORT_ANALYSIS` | `medium` | Ragionamento per inventario e controlli (fasi di analisi, più rapide). |
 | `STEP_DEADLINE_SECONDS` | 285 su Vercel, altrimenti nessuno | Oltre questo tempo un passo si ferma con un errore chiaro invece di essere interrotto dalla piattaforma. |
@@ -116,6 +117,18 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 | `SESSION_HOURS` | 12 | Durata dell'accesso. |
 
 ## 6. Servizi esterni e costi
+
+### Perché costa più di una chat
+L'abbonamento a Claude (chat) è un canone fisso con limiti d'uso; l'API usata dall'app si paga a consumo, per ogni token letto e scritto. Inoltre l'app fa più lavoro di una singola risposta: inventario, lezione (anche a parti), guida, brochure, controllo di coerenza ed eventuali revisioni, circa 8–15 chiamate per trascrizione. Il ragionamento del modello si paga come testo in uscita.
+
+### Due modalità, scelte nell'interfaccia
+| Modalità | Modello | Ragionamento | Revisione | Costo indicativo per un'ora di lezione |
+|---|---|---|---|---|
+| **Economica** (predefinita) | Claude Sonnet 5.5 | medio | solo errori gravi | circa 0,30–1 USD |
+| **Massima qualità** | Claude Opus 5.5 | alto per la scrittura | tutti i problemi rilevati | circa 1,5–4 USD |
+
+I costi sono stime: dipendono dalla lunghezza della trascrizione e dal numero di revisioni. A fine elaborazione l'app mostra token e costo stimato effettivi. Conviene anche impostare un limite di spesa mensile nella Console Anthropic (*Settings → Limits*).
+
 
 | Servizio | Costo |
 |---|---|
@@ -134,7 +147,7 @@ Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $
 
 ## 8. Verifiche eseguite e prove ancora da fare
 
-**Eseguite senza chiave API** (`python -m pytest`, 46 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
+**Eseguite senza chiave API** (`python -m pytest`, 49 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
 
 - trascrizione breve, incollata o da file; tre PDF, report e nomi dei file;
 - trascrizione lunga (145.000 caratteri): 6 segmenti, unione, controllo incrociato, lezione scritta in più parti con tutti gli argomenti, parte finale presente;

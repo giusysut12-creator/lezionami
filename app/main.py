@@ -155,6 +155,7 @@ async def extract(
     title: Annotated[str, Form()] = "",
     lesson_date: Annotated[str, Form()] = "",
     recipient: Annotated[str, Form()] = "",
+    quality: Annotated[str, Form()] = "economica",
 ) -> dict:
     """Passo 1: estrazione e controllo del testo (nessuna chiamata AI)."""
     settings = get_settings()
@@ -164,7 +165,7 @@ async def extract(
         transcript = await _read_upload(transcript_file, limit)
     elif len(transcript_text.strip()) < 20:
         raise HTTPException(400, "Carica un file con la trascrizione oppure incolla il testo (almeno qualche frase).")
-    meta = {"title": title, "lesson_date": lesson_date, "recipient": recipient}
+    meta = {"title": title, "lesson_date": lesson_date, "recipient": recipient, "quality": quality}
     try:
         return extract_inputs(settings, transcript, transcript_text if transcript is None else "", meta)
     except ExtractionError as exc:

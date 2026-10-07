@@ -44,8 +44,6 @@ async function loadConfig() {
     ui.parallel = cfg.parallel_requests || 3;
     document.querySelectorAll(".maxmb").forEach((el) => (el.textContent = cfg.max_upload_mb));
     $("#keyBanner").hidden = cfg.api_key_configured;
-    $("#modelChip").textContent = cfg.model;
-    $("#modelChip").hidden = false;
     $("#logoutBtn").hidden = !cfg.auth_enabled;
     $("#serverNote").hidden = !cfg.public_mode;
   } catch (e) {
@@ -108,6 +106,7 @@ function buildForm() {
     form.append("transcript_text", text);
   }
   for (const name of ["title", "lesson_date", "recipient"]) form.append(name, $(`[name=${name}]`).value.trim());
+  form.append("quality", ($("input[name=quality]:checked") || {}).value || "economica");
   if (total > limit) throw new Error(`Il file supera ${ui.maxMb} MB, il limite di questo server.`);
   return form;
 }
@@ -461,7 +460,7 @@ function renderResults() {
   }
   const u = run.state.usage || {};
   const tokensIn = (u.token_input || 0) + (u.token_cache_scrittura || 0) + (u.token_cache_lettura || 0);
-  parts.push(`<h3>Utilizzo API</h3><p class="small">Modello ${escapeHtml($("#modelChip").textContent)} · ${u.chiamate || 0} chiamate · ${tokensIn.toLocaleString("it-IT")} token in ingresso, ${(u.token_output || 0).toLocaleString("it-IT")} in uscita${final.cost_usd != null ? ` · costo stimato circa ${final.cost_usd.toLocaleString("it-IT")} USD` : ""}.</p>`);
+  parts.push(`<h3>Utilizzo API</h3><p class="small">Modello ${escapeHtml(final.model || "")} · ${u.chiamate || 0} chiamate · ${tokensIn.toLocaleString("it-IT")} token in ingresso, ${(u.token_output || 0).toLocaleString("it-IT")} in uscita${final.cost_usd != null ? ` · costo stimato circa ${final.cost_usd.toLocaleString("it-IT")} USD` : ""}.</p>`);
   $("#checksContent").innerHTML = parts.join("");
   renderProgress();
 }

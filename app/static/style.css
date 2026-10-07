@@ -188,3 +188,13 @@ textarea:focus, input[type=text]:focus { outline: none; border-color: var(--acce
 .logout { border: 1px solid #CFCDF2; background: #fff; color: var(--accent-dark); font: inherit; font-size: 13px; font-weight: 600; padding: 5px 12px; border-radius: 99px; cursor: pointer; }
 .logout:hover { background: var(--accent-faint); }
 .version { display: block; margin-top: 6px; opacity: .7; }
+
+/* Scelta qualità/costo */
+.choices { display: grid; gap: 10px; }
+.choice { display: flex; gap: 12px; align-items: flex-start; border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; cursor: pointer; background: #fff; }
+.choice:has(input:checked) { border-color: var(--accent); background: var(--accent-faint); box-shadow: 0 0 0 1px var(--accent) inset; }
+.choice input { margin-top: 4px; accent-color: var(--accent); width: 18px; height: 18px; flex: 0 0 18px; }
+.choice-body { display: flex; flex-direction: column; gap: 2px; }
+.badge { display: inline-block; font-size: 11px; font-weight: 700; color: var(--accent-dark); background: var(--accent-soft); border-radius: 99px; padding: 1px 8px; margin-left: 4px; vertical-align: 1px; }
+.choice-title { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.choice-title .badge { margin-left: 0; }

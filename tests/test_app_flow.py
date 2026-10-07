@@ -91,7 +91,8 @@ def test_short_transcript_end_to_end(app_url, mock_state):
     assert "Regole di accuratezza" in system and "Garanzia caso morte ≠ garanzia al riscatto" in system
     assert "Unica fonte: la trascrizione" in system and "conoscenze esterne" in system
     assert not any(b.get("tools") for b in bodies)  # nessuna ricerca web
-    assert all(b["model"] == "claude-opus-5-5" for b in bodies)
+    assert all(b["model"] == "claude-sonnet-5-5" for b in bodies)  # modalità economica predefinita
+    assert state["meta"]["quality"] == "economica" and state["final"]["model"] == "claude-sonnet-5-5"
     first_user = json.dumps(bodies[0]["messages"], ensure_ascii=False)
     assert "<trascrizione>" in first_user and "Data odierna" in first_user
     # La revisione ha corretto il calcolo errato e tolto i riferimenti interni dalla brochure.
@@ -227,12 +228,23 @@ def test_step_with_missing_state_is_rejected(app_url):
     assert res.status_code == 400
 
 
-def test_effort_per_phase(app_url, mock_state):
-    process(app_url, FIXTURES / "breve.txt")
+def test_effort_per_phase_in_max_quality(app_url, mock_state):
+    state = process(app_url, FIXTURES / "breve.txt", quality="massima")
     kinds = steps_called(mock_state)
+    assert all(b["model"] == "claude-opus-5-5" for b in mock_state.requests)
     efforts = {(k, b["output_config"].get("effort")) for k, b in zip(kinds, mock_state.requests)}
     assert ("inventory", "medium") in efforts and ("check", "medium") in efforts
     assert ("document", "high") in efforts and ("document", "medium") not in efforts
+    assert state["final"]["model"] == "claude-opus-5-5"
+
+
+def test_economy_mode_is_cheaper(app_url, mock_state):
+    state = process(app_url, FIXTURES / "breve.txt", quality="economica")
+    assert {b["model"] for b in mock_state.requests} == {"claude-sonnet-5-5"}
+    assert {b["output_config"].get("effort") for b in mock_state.requests} == {"medium"}
+    # Solo errori gravi in revisione: nessun problema «medio» tra quelli da correggere.
+    assert all(i["gravita"] == "alta" for items in state["check"]["to_fix"].values() for i in items)
+    assert state["final"]["cost_usd"] is not None
 
 
 def test_step_deadline_returns_clear_error(app_url, mock_state):

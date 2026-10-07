@@ -27,16 +27,20 @@ def main() -> int:
     parser.add_argument("--titolo", default="")
     parser.add_argument("--data", default="")
     parser.add_argument("--destinatario", default="")
+    parser.add_argument("--qualita", choices=["economica", "massima"], default="economica",
+                        help="economica: Sonnet, costo ridotto; massima: Opus, ragionamento alto")
     parser.add_argument("--uscita", type=Path, default=Path("output"))
     args = parser.parse_args()
 
     load_dotenv()
     settings = get_settings()
-    print(f"Modello: {settings.model}")
+    from app.config import for_quality
+    settings = for_quality(settings, args.qualita)
+    print(f"Modalità {args.qualita} · modello: {settings.model}")
     try:
         state = extract_inputs(
             settings, (args.trascrizione.name, args.trascrizione.read_bytes()), "",
-            {"title": args.titolo, "lesson_date": args.data, "recipient": args.destinatario},
+            {"title": args.titolo, "lesson_date": args.data, "recipient": args.destinatario, "quality": args.qualita},
         )
     except ExtractionError as exc:
         print(f"ERRORE: {exc}")
