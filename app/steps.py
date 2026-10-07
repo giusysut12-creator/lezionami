@@ -26,7 +26,8 @@ from .extract import (
 )
 from .llm import ClaudeClient, Usage
 from .pdf_render import DOC_KIND_LABEL, file_name, render_pdf
-from .schemas import CHECK_SCHEMA, CROSSCHECK_SCHEMA, DOCUMENT_SCHEMA, INVENTORY_SCHEMA
+from .concept_map import number_map, render_map_pdf
+from .schemas import CHECK_SCHEMA, CROSSCHECK_SCHEMA, DOCUMENT_SCHEMA, INVENTORY_SCHEMA, MAP_SCHEMA
 
 DOC_KINDS = ["lezione", "guida", "brochure"]
 MONTHS = ["gennaio", "febbraio", "marzo", "aprile", "maggio", "giugno", "luglio", "agosto",
@@ -249,6 +250,7 @@ class Steps:
             "lesson_part": self.step_lesson_part,
             "guide": lambda a: self.step_document("guida"),
             "brochure": lambda a: self.step_document("brochure"),
+            "map": self.step_map,
             "check": self.step_check,
             "revise": self.step_revise,
             "finalize": self.step_finalize,
@@ -345,6 +347,34 @@ class Steps:
                                  DOCUMENT_SCHEMA, label)
         return {"kind": kind, "doc": checks.normalize_document(doc)}
 
+    def step_map(self, args: dict) -> dict:
+        task = prompts.MAP_TASK + f"\n\nTema: «{self.final_title}»."
+        if self.meta.get("recipient"):
+            task += f" Destinatario: {self.meta['recipient']}."
+        data = self.llm.call_json(prompts.SYSTEM_BASE, self._shared_with_lesson() + [self._task(task)],
+                                  MAP_SCHEMA, "mappa concettuale", max_tokens=32000)
+        if not number_map(data)["branches"]:
+            raise StepError("La mappa generata è vuota. Premi «Riprova».", status=502, retryable=True)
+        return {"kind": "mappa", "doc": data}
+
+    @staticmethod
+    def map_as_document(data: dict) -> dict:
+        """La mappa come documento a blocchi, per i controlli automatici sul testo."""
+        numbered = number_map(data)
+        items = [numbered["root"]]
+        for branch in numbered["branches"]:
+            items.append(branch)
+            for child in branch["children"]:
+                items.append(child)
+                if child["detail"]:
+                    items.append(child["detail"])
+        if numbered["conclusion"]:
+            items.append(numbered["conclusion"])
+        blocks = [{"type": "paragraph", "title": n["label"], "text": n["text"], "items": [], "columns": [],
+                   "rows": [], "refs": []} for n in items]
+        return {"title": numbered["title"], "subtitle": "", "footer_label": "", "limits_notice": "",
+                "sections": [{"heading": "Mappa", "blocks": blocks}]}
+
     # --- controllo -------------------------------------------------------
     def _source_numbers(self) -> set[float]:
         texts = [p["text"] for p in self.source["transcript"]["passages"]]
@@ -431,6 +461,11 @@ class Steps:
         revised = set((self.state.get("revised") or {}).keys())
         ai_issues = (self.state.get("check") or {}).get("ai_issues", [])
         remaining_ai = [i for i in ai_issues if i["documento"] not in revised]
+        map_data = (self.state.get("docs") or {}).get("mappa")
+        if map_data:
+            map_doc = self.map_as_document(map_data)
+            residual += checks.check_brochure_terms(map_doc, "mappa")
+            residual += checks.check_arithmetic(map_doc, "mappa")
         issues = sorted(residual + remaining_ai, key=lambda i: {"alta": 0, "media": 1, "bassa": 2}[i["gravita"]])
         files, warnings = [], []
         for kind in DOC_KINDS:
@@ -442,6 +477,12 @@ class Steps:
                 raise StepError(f"Il PDF «{DOC_KIND_LABEL[kind]}» non contiene testo selezionabile.", status=500, retryable=True)
             files.append({"kind": kind, "label": DOC_KIND_LABEL[kind], "filename": file_name(kind, self.final_title),
                           "pages": pages, "size": len(data), "b64": base64.b64encode(data).decode()})
+        if map_data:
+            footer = f"{docs['lezione'].get('footer_label') or self.final_title} · Mappa concettuale"
+            data = render_map_pdf(map_data, footer)
+            reader = PdfReader(io.BytesIO(data))
+            files.append({"kind": "mappa", "label": DOC_KIND_LABEL["mappa"], "filename": file_name("mappa", self.final_title),
+                          "pages": len(reader.pages), "size": len(data), "b64": base64.b64encode(data).decode()})
         pages = {f["kind"]: f["pages"] for f in files}
         if pages["guida"] > 7:
             warnings.append(f"La guida di studio è di {pages['guida']} pagine, oltre l'indicazione di 3–5: il contenuto è molto ampio.")

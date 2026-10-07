@@ -184,22 +184,22 @@ PROMISE_TERMS = [
 ]
 
 
-def check_brochure_terms(doc: dict) -> list[dict]:
+def check_brochure_terms(doc: dict, document: str = "brochure") -> list[dict]:
     issues: list[dict] = []
     text = document_text(doc).lower()
     for pattern in INTERNAL_TERMS:
         match = re.search(pattern, text)
         if match:
             issues.append(_issue(
-                "alta", "brochure", "testo",
-                f"La brochure contiene un riferimento commerciale interno: «{match.group(0)}».",
-                "Eliminare remunerazione della rete, obiettivi di vendita e gergo interno dalla brochure.",
+                "alta", document, "testo",
+                f"Il documento per il cliente contiene un riferimento commerciale interno: «{match.group(0)}».",
+                "Eliminare remunerazione della rete, obiettivi di vendita e gergo interno dal documento per il cliente.",
             ))
     for pattern in PROMISE_TERMS:
         match = re.search(pattern, text)
         if match:
             issues.append(_issue(
-                "alta", "brochure", "testo",
+                "alta", document, "testo",
                 f"Possibile promessa commerciale non supportata: «{match.group(0)}».",
                 "Riformulare senza promesse; indicare garanzie solo se contrattuali e nei loro limiti.",
             ))
@@ -207,9 +207,9 @@ def check_brochure_terms(doc: dict) -> list[dict]:
         for block in section.get("blocks", []):
             if block.get("type") == "internal":
                 issues.append(_issue(
-                    "alta", "brochure", f"sezione «{section.get('heading', '')}»",
-                    "La brochure contiene un blocco di informazioni interne.",
-                    "Rimuovere il blocco interno dalla brochure.",
+                    "alta", document, f"sezione «{section.get('heading', '')}»",
+                    "Il documento per il cliente contiene un blocco di informazioni interne.",
+                    "Rimuovere il blocco interno dal documento per il cliente.",
                 ))
     return issues
 

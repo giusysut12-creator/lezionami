@@ -145,10 +145,11 @@ textarea:focus, input:focus { outline: none; border-color: var(--accent); box-sh
 .warnings li { background: var(--warn-bg); border: 1px solid var(--warn-line); border-radius: 16px; padding: 10px 14px; font-size: 14.5px; margin-top: 8px; }
 
 /* Risultati: tessere colorate */
-.downloads { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.downloads { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; }
 .dl { display: flex; flex-direction: column; gap: 8px; padding: 18px; border-radius: 22px; text-decoration: none; color: #fff; background: var(--accent); transition: transform .12s, box-shadow .15s; box-shadow: 0 10px 24px rgba(93, 52, 30, .14); }
 .dl:nth-child(2) { background: var(--sand); color: var(--ink); }
 .dl:nth-child(3) { background: var(--stone); color: var(--ink); }
+.dl:nth-child(4) { background: #2D1E2F; color: #FBF6EF; }
 .dl:hover { transform: translateY(-2px); box-shadow: 0 14px 30px rgba(93, 52, 30, .2); }
 .dl-icon { width: 36px; height: 42px; border-radius: 8px; background: rgba(255,255,255,.9); display: grid; place-items: center; font-size: 10px; font-weight: 700; color: var(--accent-dark); }
 .dl b { font-family: var(--font-display); font-weight: 400; font-size: 20px; text-transform: uppercase; letter-spacing: .02em; }

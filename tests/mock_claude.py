@@ -141,6 +141,15 @@ def document_response(text: str) -> dict:
             "footer_label": "Test", "limits_notice": f"{TEST_MARK} fonte di prova.", "sections": sections}
 
 
+def map_response() -> dict:
+    node = lambda label: {"label": f"{label}", "text": f"{TEST_MARK} spiegazione del punto {label}."}
+    return {"eyebrow": "Mappa per il cliente · prova", "title": f"{TEST_MARK} Mappa", "root": node("Tema centrale"),
+            "branches": [{**node(f"Ramo {b}"), "children": [
+                {**node(f"Punto {b}.{c}"), "detail": node(f"Dettaglio {b}.{c}") if c == 1 else {"label": "", "text": ""}}
+                for c in range(1, 4)]} for b in (1, 2)],
+            "conclusion": node("Sintesi finale")}
+
+
 def check_response() -> dict:
     return {"esito": "ok", "problemi": [], "argomenti_non_coperti": [], "note": TEST_MARK}
 
@@ -175,7 +184,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_json(STATE.fail_status, STATE.fail_body)
         user = _user_text(body)
         schema = (((body.get("output_config") or {}).get("format") or {}).get("schema") or {}).get("properties", {})
-        if "argomenti_duplicati" in schema:
+        if "branches" in schema:
+            payload = map_response()
+        elif "argomenti_duplicati" in schema:
             payload = crosscheck_response(user)
         elif "argomenti" in schema:
             payload = inventory_response(user)

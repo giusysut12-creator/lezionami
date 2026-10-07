@@ -13,13 +13,13 @@ let run = null; // { form, state, phases, error }
 const PHASES = [
   ["estrazione", "Estrazione e controllo del testo", 5],
   ["inventario", "Inventario di argomenti, numeri e condizioni", 25],
-  ["generazione", "Generazione dei tre documenti", 37],
+  ["generazione", "Generazione dei documenti", 37],
   ["controllo", "Controllo di coerenza e copertura", 15],
   ["pdf", "Creazione e verifica dei PDF", 10],
 ];
 const STATUS_ICON = { completata: "✓", errore: "!", saltata: "–", non_riuscita: "!", in_corso: "", attesa: "" };
 const USAGE_KEYS = ["chiamate", "token_input", "token_output", "token_cache_scrittura", "token_cache_lettura"];
-const DOC_LABEL = { lezione: "Lezione completa", guida: "Guida di studio", brochure: "Brochure cliente" };
+const DOC_LABEL = { lezione: "Lezione completa", guida: "Guida di studio", brochure: "Brochure cliente", mappa: "Mappa concettuale" };
 
 function escapeHtml(text) {
   return String(text ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -171,6 +171,7 @@ const STEP_KEYS = {
   lesson_part: ["meta", "source", "inventory"],
   guide: ["meta", "source", "inventory", "lesson_parts"],
   brochure: ["meta", "source", "inventory", "lesson_parts"],
+  map: ["meta", "source", "inventory", "lesson_parts"],
   check: ["meta", "source", "inventory", "lesson_parts", "docs"],
   revise: ["meta", "source", "inventory", "lesson_parts", "docs", "check"],
   finalize: ["meta", "source", "inventory", "lesson_parts", "docs", "check", "revised", "warnings"],
@@ -256,7 +257,7 @@ async function execute() {
     const parts = (s().lesson_parts ||= {});
     const docs = (s().docs ||= {});
     const plan = s().lesson_plan;
-    const totalDocs = plan.length + 2;
+    const totalDocs = plan.length + 3;
     const progressGen = (detail) => tick(current, Object.keys(parts).length + Object.keys(docs).length, totalDocs, detail);
     const lessonTask = (index) => async () => {
       const result = await step("lesson_part", { index });
@@ -266,12 +267,12 @@ async function execute() {
     progressGen(plan.length > 1 ? `Scrittura della lezione completa in ${plan.length} parti` : "Scrittura della lezione completa");
     if (!parts["0"]) await lessonTask(0)();
     await pool(plan.filter((p) => !parts[String(p.index)]).map((p) => lessonTask(p.index)), ui.parallel);
-    progressGen("Scrittura di guida di studio e brochure");
-    await pool([["guida", "guide"], ["brochure", "brochure"]].filter(([k]) => !docs[k]).map(([kind, name]) => async () => {
+    progressGen("Scrittura di guida di studio, brochure e mappa concettuale");
+    await pool([["guida", "guide"], ["brochure", "brochure"], ["mappa", "map"]].filter(([k]) => !docs[k]).map(([kind, name]) => async () => {
       docs[kind] = (await step(name)).doc;
       progressGen(`${DOC_LABEL[kind]} pronta`);
-    }), 2);
-    setPhase(current, "completata", "Lezione, guida e brochure generate");
+    }), 3);
+    setPhase(current, "completata", "Lezione, guida, brochure e mappa generate");
 
     current = "controllo";
     if (!s().check) {

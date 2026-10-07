@@ -1,10 +1,11 @@
 # Lezionami
 
-Applicazione web che trasforma la trascrizione di una lezione (TXT, DOCX o PDF testuale, oppure testo incollato) in tre PDF:
+Applicazione web che trasforma la trascrizione di una lezione (TXT, DOCX o PDF testuale, oppure testo incollato) in quattro PDF:
 
 1. **Lezione completa** – `Lezione_completa_Titolo.pdf`
 2. **Guida di studio** – `Guida_studio_Titolo.pdf`
 3. **Brochure cliente** – `Brochure_cliente_Titolo.pdf`
+4. **Mappa concettuale** – `Mappa_concettuale_Titolo.pdf`: A4 orizzontale; nella prima pagina un albero numerato (tema centrale, 2-3 rami colorati con i loro punti, approfondimenti tratteggiati e un riquadro di sintesi), nella seconda «Cosa dire per ogni punto della mappa» su due colonne. I contenuti li sceglie l'AI, il disegno lo fa il programma, così l'impaginazione resta sempre ordinata.
 
 I documenti si basano **esclusivamente su quanto detto nella trascrizione**: l'app non aggiunge informazioni da documenti, internet o conoscenze esterne (sono ammesse solo spiegazioni generali dei termini tecnici ed esempi ipotetici dichiarati come tali). Se un argomento non è trattato nella trascrizione, i documenti lo dicono invece di completarlo.
 
@@ -143,7 +144,7 @@ I costi sono stime: dipendono dalla lunghezza della trascrizione e dal numero di
 
 ## 8. Verifiche eseguite e prove ancora da fare
 
-**Eseguite senza chiave API** (`python -m pytest`, 49 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
+**Eseguite senza chiave API** (`python -m pytest`, 50 test, tutti superati). Le chiamate all'AI sono sostituite da un server finto che imita il protocollo dell'API (`tests/mock_claude.py`), con risposte segnaposto «[DATI DI TEST]»: i test verificano il **flusso**, non la qualità dei contenuti.
 
 - trascrizione breve, incollata o da file; tre PDF, report e nomi dei file;
 - trascrizione lunga (145.000 caratteri): 6 segmenti, unione, controllo incrociato, lezione scritta in più parti con tutti gli argomenti, parte finale presente;

@@ -59,7 +59,7 @@ def test_wrong_password_then_login_and_full_flow(online, mock_state):
     config = session.get(f"{online}/api/config", timeout=10).json()
     assert config["auth_enabled"] and config["public_mode"]
     state = process(online, FIXTURES / "breve.txt", session=session)
-    assert len(state["final"]["files"]) == 3
+    assert len(state["final"]["files"]) == 4
     # Senza cookie i passi non sono eseguibili.
     res = requests.post(f"{online}/api/step", json={"step": "inventory", "args": {}, "state": state}, timeout=10)
     assert res.status_code == 401

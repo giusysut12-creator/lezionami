@@ -55,7 +55,9 @@ def steps_called(mock_state):
     for body in mock_state.requests:
         props = body["output_config"]["format"]["schema"]["properties"]
         text = json.dumps(body["messages"], ensure_ascii=False)
-        if "argomenti_duplicati" in props:
+        if "branches" in props:
+            kinds.append("map")
+        elif "argomenti_duplicati" in props:
             kinds.append("crosscheck")
         elif "argomenti" in props:
             kinds.append("inventory")
@@ -70,11 +72,13 @@ def steps_called(mock_state):
 
 def assert_pdfs(final, title_part):
     names = [f["filename"] for f in final["files"]]
-    assert names == [f"Lezione_completa_{title_part}.pdf", f"Guida_studio_{title_part}.pdf", f"Brochure_cliente_{title_part}.pdf"]
+    assert names == [f"Lezione_completa_{title_part}.pdf", f"Guida_studio_{title_part}.pdf",
+                     f"Brochure_cliente_{title_part}.pdf", f"Mappa_concettuale_{title_part}.pdf"]
     for item in final["files"]:
         reader = PdfReader(io.BytesIO(base64.b64decode(item["b64"])))
         assert len(reader.pages) == item["pages"] and reader.pages[0].extract_text().strip()
-        assert round(float(reader.pages[0].mediabox.width)) == 595
+        box = reader.pages[0].mediabox  # A4: verticale, la mappa orizzontale
+        assert sorted((round(float(box.width)), round(float(box.height)))) == [595, 842]
     assert final["zip_name"] == f"Documenti_{title_part}.zip"
     assert final["report"]["filename"] == f"Report_verifica_{title_part}.txt"
     assert "REPORT DI VERIFICA" in final["report"]["text"]
@@ -271,3 +275,16 @@ def test_usage_limit_error_is_explained(app_url, mock_state):
         process(app_url, FIXTURES / "breve.txt")
     assert "limite di spesa" in info.value.detail and "01/11/2026" in info.value.detail
     assert "Settings → Limits" in info.value.detail
+
+
+def test_concept_map_pdf(app_url, mock_state):
+    state = process(app_url, FIXTURES / "breve.txt", title="Orizzonte Famiglia")
+    assert steps_called(mock_state).count("map") == 1
+    item = next(f for f in state["final"]["files"] if f["kind"] == "mappa")
+    reader = PdfReader(io.BytesIO(base64.b64decode(item["b64"])))
+    page = reader.pages[0]
+    assert float(page.mediabox.width) > float(page.mediabox.height)  # A4 orizzontale
+    first = page.extract_text()
+    assert "1 · Tema centrale" in first and "Sintesi finale" in first
+    notes = "".join(p.extract_text() for p in reader.pages[1:])
+    assert "Cosa dire per ogni punto della mappa" in notes and "spiegazione del punto Punto 2.3" in notes

@@ -167,3 +167,19 @@ Ricevi un documento già generato e l'elenco dei problemi rilevati dal controllo
 - non eliminare contenuti corretti e non accorciare il documento oltre il necessario;
 - non introdurre informazioni nuove non presenti nell'inventario o nella trascrizione;
 - se un problema segnalato non è in realtà un errore secondo la trascrizione, lascia il testo invariato."""
+
+MAP_TASK = """## Compito: «Mappa concettuale» per il cliente
+Crea una mappa concettuale che aiuti il consulente a spiegare la lezione a un cliente, coerente con la lezione completa allegata. Sarà disegnata su una pagina A4 orizzontale, con una seconda pagina «Cosa dire per ogni punto della mappa».
+
+Struttura:
+- «root»: il tema centrale (es. «Le soluzioni prudenti di giugno»);
+- «branches»: da 2 a 3 rami principali (prodotti, opzioni, bisogni o grandi temi), ciascuno con da 1 a 4 punti («children»);
+- «detail»: approfondimento facoltativo sotto un punto, solo dove serve davvero (al massimo 4 in tutta la mappa);
+- «conclusion»: un nodo finale di sintesi, per esempio quale soluzione per quale obiettivo, solo se la lezione lo consente; altrimenti un riepilogo dei punti da chiarire.
+
+Regole:
+- etichette brevissime (massimo 45 caratteri), comprensibili da chi non è esperto; numeri chiave nell'etichetta quando aiutano (es. «Cedola tra 1,80% e 3,30%»);
+- «text»: 1-3 frasi semplici, in linguaggio da cliente, con i numeri e le condizioni corretti della lezione;
+- escludi remunerazione della rete, obiettivi di vendita, istruzioni interne e gergo aziendale; nessuna promessa non supportata;
+- dati storici restano storici; finestre commerciali scadute non vanno presentate come aperte; ciò che è incompleto o discordante va detto in modo semplice;
+- non aggiungere nulla che non sia nella trascrizione."""

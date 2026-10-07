@@ -148,3 +148,28 @@ CROSSCHECK_SCHEMA = _obj({
     "argomenti_duplicati": {"type": "array", "items": STR_LIST,
                             "description": "Gruppi di id di argomenti che trattano lo stesso tema."},
 })
+
+# ---------------------------------------------------------------------------
+# Mappa concettuale
+# ---------------------------------------------------------------------------
+
+MAP_NODE = _obj({
+    "label": {**STR, "description": "Etichetta breve del nodo, al massimo 45 caratteri."},
+    "text": {**STR, "description": "Cosa dire su questo punto: 1-3 frasi semplici per il cliente."},
+})
+
+MAP_SCHEMA = _obj({
+    "eyebrow": {**STR, "description": "Sopratitolo breve in maiuscolo, es. «MAPPA PER IL CLIENTE · NOME PRODOTTO»."},
+    "title": {**STR, "description": "Titolo della mappa: la domanda o il bisogno del cliente, al massimo 70 caratteri."},
+    "root": MAP_NODE,
+    "branches": {"type": "array", "description": "Da 2 a 3 rami principali.", "items": _obj({
+        "label": MAP_NODE["properties"]["label"],
+        "text": MAP_NODE["properties"]["text"],
+        "children": {"type": "array", "description": "Da 1 a 4 punti per ramo.", "items": _obj({
+            "label": MAP_NODE["properties"]["label"],
+            "text": MAP_NODE["properties"]["text"],
+            "detail": {**MAP_NODE, "description": "Approfondimento facoltativo sotto il punto: lascia label e text vuoti se non serve."},
+        })},
+    })},
+    "conclusion": {**MAP_NODE, "description": "Nodo finale di sintesi (es. «Quale scegliere, in base all'obiettivo»)."},
+})

@@ -103,7 +103,7 @@ def run_all(call: Call, state: dict, on_event: Callable[[str, str], None] | None
             event("generazione", f"{kind} generata")
         return job
 
-    _parallel([doc_job(k, n) for k, n in (("guida", "guide"), ("brochure", "brochure")) if k not in docs], parallel)
+    _parallel([doc_job(k, n) for k, n in (("guida", "guide"), ("brochure", "brochure"), ("mappa", "map")) if k not in docs], parallel)
 
     # Controllo e revisione
     if not state.get("check"):

@@ -49,11 +49,13 @@ DOC_KIND_LABEL = {
     "lezione": "Lezione completa",
     "guida": "Guida di studio",
     "brochure": "Brochure cliente",
+    "mappa": "Mappa concettuale",
 }
 FILE_PREFIX = {
     "lezione": "Lezione_completa",
     "guida": "Guida_studio",
     "brochure": "Brochure_cliente",
+    "mappa": "Mappa_concettuale",
 }
 
 
