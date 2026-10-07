@@ -13,6 +13,10 @@ I PDF si scaricano singolarmente o in un unico ZIP, insieme a un report di verif
 
 ---
 
+## Versione artefatto su claude.ai (senza chiave API)
+
+La cartella `artefatto/` contiene una versione dell'app che gira come artefatto su claude.ai: legge TXT, DOCX e PDF testuali, usa Claude con **l'account di chi la apre** (nessuna chiave API, nessun costo per chi la pubblica) e crea i quattro PDF nel browser. Il flusso è più leggero: la lezione è scritta direttamente dalla trascrizione (a parti se lunga), guida, brochure e mappa dalla lezione; non ci sono inventario separato né revisione automatica. Si modifica `artefatto/sorgente.html` e si rigenera la pagina con `python artefatto/costruisci.py`.
+
 ## 1. Pubblicare online su Vercel
 
 ### Cosa serve
