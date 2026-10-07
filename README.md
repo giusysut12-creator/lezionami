@@ -27,7 +27,7 @@ I PDF si scaricano singolarmente o in un unico ZIP, insieme a un report di verif
    |---|---|
    | `ANTHROPIC_API_KEY` | la tua chiave `sk-ant-…` |
    | `APP_PASSWORD` | una password lunga da dare solo a chi deve usare l'app |
-   | `CLAUDE_MODEL` *(facoltativo)* | modello della modalità «massima qualità», predefinito `claude-opus-5-5` (la modalità «economica» usa `claude-sonnet-5-5`) |
+   | `CLAUDE_MODEL` *(facoltativo)* | predefinito `claude-sonnet-5-5`; `claude-opus-5-5` è più accurato ma costa circa il doppio |
 
    Senza `APP_PASSWORD` l'app online non si apre: mostra un messaggio di configurazione incompleta, così nessuno può consumare il tuo credito.
 4. Premi **Deploy**. Al termine apri l'indirizzo `https://….vercel.app`: compare la pagina di accesso.
@@ -105,9 +105,9 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 |---|---|---|
 | `ANTHROPIC_API_KEY` | – | Obbligatoria. Resta sul server: non arriva mai al browser né nei log. |
 | `APP_PASSWORD` | – | Obbligatoria online. Cambiandola, tutte le sessioni aperte decadono. |
-| `CLAUDE_MODEL` | `claude-opus-5-5` | Modello della modalità «massima qualità». |
-| `CLAUDE_MODEL_ECONOMICO` / `CLAUDE_EFFORT_ECONOMICO` | `claude-sonnet-5-5` / `medium` | Modello e ragionamento della modalità «economica». |
-| `CLAUDE_EFFORT` | `high` | Ragionamento per la scrittura dei documenti: `low`/`medium`/`high`/`xhigh`/`max` (più alto = più accurato, lento e costoso). |
+| `CLAUDE_MODEL` | `claude-sonnet-5-5` | Modello usato (per esempio `claude-opus-5-5`: più costoso). |
+| `REVISIONE_COMPLETA` | `false` | `true` = la revisione automatica corregge anche i problemi di gravità media (più chiamate, più costo). |
+| `CLAUDE_EFFORT` | `medium` | Ragionamento per la scrittura dei documenti: `low`/`medium`/`high`/`xhigh`/`max` (più alto = più accurato, lento e costoso). |
 | `CLAUDE_EFFORT_ANALYSIS` | `medium` | Ragionamento per inventario e controlli (fasi di analisi, più rapide). |
 | `STEP_DEADLINE_SECONDS` | 285 su Vercel, altrimenti nessuno | Oltre questo tempo un passo si ferma con un errore chiaro invece di essere interrotto dalla piattaforma. |
 | `CLAUDE_REFUSAL_FALLBACK` | `true` | Se il modello rifiuta una richiesta per i suoi filtri di sicurezza, l'API la ripete su un modello alternativo. |
@@ -121,21 +121,17 @@ Variabili d'ambiente (in locale nel file `.env`, su Vercel in *Settings → Envi
 ### Perché costa più di una chat
 L'abbonamento a Claude (chat) è un canone fisso con limiti d'uso; l'API usata dall'app si paga a consumo, per ogni token letto e scritto. Inoltre l'app fa più lavoro di una singola risposta: inventario, lezione (anche a parti), guida, brochure, controllo di coerenza ed eventuali revisioni, circa 8–15 chiamate per trascrizione. Il ragionamento del modello si paga come testo in uscita.
 
-### Due modalità, scelte nell'interfaccia
-| Modalità | Modello | Ragionamento | Revisione | Costo indicativo per un'ora di lezione |
-|---|---|---|---|---|
-| **Economica** (predefinita) | Claude Sonnet 5.5 | medio | solo errori gravi | circa 0,30–1 USD |
-| **Massima qualità** | Claude Opus 5.5 | alto per la scrittura | tutti i problemi rilevati | circa 1,5–4 USD |
+### Modello usato
+L'app usa **Claude Sonnet 5.5** con ragionamento medio e revisione automatica solo degli errori gravi: costo indicativo di circa 0,30–1 USD per un'ora di lezione. Volendo si può cambiare modello con la variabile `CLAUDE_MODEL` (per esempio `claude-opus-5-5`, circa il doppio del costo).
 
 I costi sono stime: dipendono dalla lunghezza della trascrizione e dal numero di revisioni. A fine elaborazione l'app mostra token e costo stimato effettivi. Conviene anche impostare un limite di spesa mensile nella Console Anthropic (*Settings → Limits*).
 
 
 | Servizio | Costo |
 |---|---|
-| **API di Claude (Anthropic)** – obbligatoria | A consumo, senza canone. Opus 5.5: 4 $ / milione di token in ingresso, 20 $ / milione in uscita. Sonnet 5.5: 2 $ / 10 $. Verifica i prezzi vigenti su [anthropic.com/pricing](https://www.anthropic.com/pricing). |
+| **API di Claude (Anthropic)** – obbligatoria | A consumo, senza canone. Sonnet 5.5 (usato dall'app): 2 $ / milione di token in ingresso, 10 $ / milione in uscita. Opus 5.5: 4 $ / 20 $. Verifica i prezzi vigenti su [anthropic.com/pricing](https://www.anthropic.com/pricing). |
 | **Vercel** – solo se pubblichi online | Hobby gratuito (uso personale non commerciale); Pro 20 $/mese per utente per uso aziendale e tempi più lunghi. |
 
-Ordini di grandezza indicativi con Opus 5.5: trascrizione breve circa 0,30–1 $; un'ora di lezione (circa 9.000 parole) circa 1,5–4 $; registrazioni di più ore di più. L'app mostra a fine lavoro token usati e costo stimato.
 
 ## 7. Privacy
 

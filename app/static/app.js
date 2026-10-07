@@ -106,7 +106,6 @@ function buildForm() {
     form.append("transcript_text", text);
   }
   for (const name of ["title", "lesson_date", "recipient"]) form.append(name, $(`[name=${name}]`).value.trim());
-  form.append("quality", ($("input[name=quality]:checked") || {}).value || "economica");
   if (total > limit) throw new Error(`Il file supera ${ui.maxMb} MB, il limite di questo server.`);
   return form;
 }

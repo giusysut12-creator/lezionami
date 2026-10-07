@@ -24,6 +24,6 @@ services:
       - key: SESSION_SECRET
         generateValue: true
       - key: CLAUDE_MODEL
-        value: claude-opus-5-5
+        value: claude-sonnet-5-5
       - key: CLAUDE_EFFORT
-        value: high
+        value: medium

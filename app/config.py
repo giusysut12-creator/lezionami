@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import os
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from pathlib import Path
 
 ROOT_DIR = Path(__file__).resolve().parent.parent
@@ -53,9 +53,6 @@ KNOWN_PRICES = {
 }
 
 
-QUALITY_LEVELS = ("economica", "massima")
-
-
 @dataclass
 class Settings:
     api_key_configured: bool
@@ -81,8 +78,7 @@ class Settings:
     session_hours: int
     public_mode: bool
     on_vercel: bool
-    model_economy: str
-    effort_economy: str
+    revise_all_issues: bool
 
     @property
     def auth_enabled(self) -> bool:
@@ -92,7 +88,7 @@ class Settings:
 def get_settings() -> Settings:
     on_vercel = bool(os.environ.get("VERCEL"))
     app_password = os.environ.get("APP_PASSWORD", "")
-    model = os.environ.get("CLAUDE_MODEL", "claude-opus-5-5").strip() or "claude-opus-5-5"
+    model = os.environ.get("CLAUDE_MODEL", "claude-sonnet-5-5").strip() or "claude-sonnet-5-5"
     price_in, price_out = KNOWN_PRICES.get(model, (None, None))
     if os.environ.get("PRICE_INPUT_PER_MTOK"):
         price_in = float(os.environ["PRICE_INPUT_PER_MTOK"])
@@ -103,8 +99,8 @@ def get_settings() -> Settings:
             os.environ.get("ANTHROPIC_API_KEY") or os.environ.get("ANTHROPIC_AUTH_TOKEN")
         ),
         model=model,
-        # Ragionamento: alto per scrivere i documenti, medio per le fasi di analisi (più rapide).
-        effort=os.environ.get("CLAUDE_EFFORT", "high").strip() or "high",
+        # Ragionamento medio: buon equilibrio tra qualità, tempi e costi.
+        effort=os.environ.get("CLAUDE_EFFORT", "medium").strip() or "medium",
         effort_analysis=os.environ.get("CLAUDE_EFFORT_ANALYSIS", "medium").strip() or "medium",
         # Su Vercel ogni passo si ferma da solo prima del limite di 300 secondi.
         step_deadline_seconds=_int("STEP_DEADLINE_SECONDS", 285 if on_vercel else 0),
@@ -130,19 +126,9 @@ def get_settings() -> Settings:
         public_mode=on_vercel or bool(os.environ.get("RENDER"))
         or os.environ.get("HOST", "127.0.0.1").strip() not in ("127.0.0.1", "localhost", "::1"),
         on_vercel=on_vercel,
-        # Modalità «economica»: modello più conveniente e ragionamento medio.
-        model_economy=os.environ.get("CLAUDE_MODEL_ECONOMICO", "claude-sonnet-5-5").strip() or "claude-sonnet-5-5",
-        effort_economy=os.environ.get("CLAUDE_EFFORT_ECONOMICO", "medium").strip() or "medium",
+        # Revisione automatica: solo errori gravi (predefinito, più economico) o anche problemi medi.
+        revise_all_issues=_bool("REVISIONE_COMPLETA", False),
     )
-
-
-def for_quality(settings: Settings, quality: str) -> Settings:
-    """Impostazioni effettive per la modalità scelta dall'utente."""
-    if quality != "economica":
-        return settings
-    price_in, price_out = KNOWN_PRICES.get(settings.model_economy, (None, None))
-    return replace(settings, model=settings.model_economy, effort=settings.effort_economy,
-                   effort_analysis=settings.effort_economy, price_input=price_in, price_output=price_out)
 
 
 def _derived_secret(app_password: str) -> str:

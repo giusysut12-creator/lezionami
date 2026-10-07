@@ -20,7 +20,7 @@ import time
 from datetime import datetime
 
 from . import checks, prompts
-from .config import QUALITY_LEVELS, Settings, for_quality
+from .config import Settings
 from .extract import (
     build_transcript_passages, detect_issues, extract_file, from_pasted_text, segment_passages,
 )
@@ -59,7 +59,6 @@ def _passages_dicts(passages) -> list[dict]:
 
 
 def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pasted_text: str, meta: dict) -> dict:
-    quality = meta.get("quality") if meta.get("quality") in QUALITY_LEVELS else "economica"
     """Estrae il testo e prepara lo stato iniziale. Solleva ExtractionError."""
     if transcript is not None:
         doc = extract_file(transcript[0], transcript[1], "trascrizione")
@@ -84,7 +83,6 @@ def extract_inputs(settings: Settings, transcript: tuple[str, bytes] | None, pas
             "title": (meta.get("title") or "").strip()[:150],
             "lesson_date": (meta.get("lesson_date") or "").strip()[:60],
             "recipient": (meta.get("recipient") or "").strip()[:200],
-            "quality": quality,
             "today": italian_date(datetime.now()),
         },
         "source": {
@@ -147,8 +145,6 @@ class Steps:
     def __init__(self, settings: Settings, state: dict):
         self.state = state or {}
         self.meta = self.state.get("meta") or {}
-        self.quality = self.meta.get("quality", "massima")
-        settings = for_quality(settings, self.quality)
         self.settings = settings
         self.source = self.state.get("source") or {}
         self.usage = Usage()
@@ -388,8 +384,8 @@ class Steps:
             ai_issues.append({"gravita": "media", "documento": "lezione", "posizione": "copertura",
                               "problema": f"Argomento non coperto: {missing}",
                               "correzione": "Aggiungere la trattazione dell'argomento.", "origine": "controllo AI"})
-        # In modalità economica si revisionano solo i documenti con errori gravi.
-        severities = ("alta",) if self.quality == "economica" else ("alta", "media")
+        # Per contenere i costi si revisionano di norma solo i documenti con errori gravi.
+        severities = ("alta", "media") if self.settings.revise_all_issues else ("alta",)
         to_fix = {kind: [i for i in ai_issues + auto_issues if i["documento"] == kind and i["gravita"] in severities]
                   for kind in DOC_KINDS}
         fix_count = sum(len(v) for v in to_fix.values())
