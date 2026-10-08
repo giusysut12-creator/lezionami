@@ -231,6 +231,10 @@ footer { color: var(--muted); font-size: 13px; margin-top: 18px; }
       <p><b>Usa il tuo account Claude.</b> L'elaborazione avviene con Claude, sul piano di chi usa la pagina: alla prima richiesta Claude ti chiede il permesso. Il testo resta in questa pagina e viene letto solo da Claude; i PDF vengono creati nel tuo browser.</p>
     </div>
 
+    <div class="alert" id="unavailable" hidden>
+      <strong>Claude non è disponibile in questa visualizzazione</strong>
+      <p>Per generare i documenti apri questa pagina su <b>claude.ai</b>, collegato con il tuo account, in un browser (non come pagina separata in una nuova scheda). Se ti hanno mandato un link pubblico, chiedi di essere invitato con la tua email dal menu «Condividi» dell'artefatto.</p>
+    </div>
     <button type="submit" class="btn btn-primary" id="go">Genera i PDF</button>
     <p class="error-text" id="formError" role="alert" hidden></p>
   </form>
@@ -447,7 +451,7 @@ const ERRORS = {
 };
 async function ask(prompt, onProgress) {
   const sample = await claude.use("sample");
-  if (!sample) throw { code: "unavailable", message: "Apri questa pagina su claude.ai, con il tuo account, per usare Claude." };
+  if (!sample) throw { code: "unavailable", message: "Claude non è disponibile in questa visualizzazione: apri la pagina su claude.ai, collegato con il tuo account (non da un link pubblico né in una scheda separata)." };
   controller = new AbortController();
   return sample.json(prompt, {
     modelTier: "default",
@@ -863,6 +867,13 @@ function renderMap(raw, title) {
   }
   return withPages(pdf.output("blob"), n);
 }
+
+/* All'apertura: Claude è disponibile in questa visualizzazione? */
+(async () => {
+  let sample = null;
+  try { sample = window.claude ? await window.claude.use("sample") : null; } catch { sample = null; }
+  if (!sample) { $("#unavailable").hidden = false; $("#go").disabled = true; }
+})();
 
 /* ------------------------------------------------------------------ */
 /* Download                                                            */
